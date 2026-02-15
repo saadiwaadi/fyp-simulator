@@ -1,0 +1,15 @@
+# Django defaults
+*.log
+*.pot
+*.pyc
+__pycache__/
+db.sqlite3
+media/
+
+# Virtual Environment (Don't commit this!)
+venv/
+env/
+.env
+
+# VS Code settings
+.vscode/

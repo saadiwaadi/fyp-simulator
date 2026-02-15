@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>TACTICAL TERMINAL // LIVE</title>
+    <style>
+        /* --- TERMINAL AESTHETIC --- */
+        :root {
+            --bg-color: #000000;
+            --text-main: #cccccc;
+            --text-dim: #666666;
+            --accent: #ffffff;
+            --border: #333333;
+            
+            /* Minimal Status Colors */
+            --green: #00ff00;
+            --red: #ff3333;
+            --blue: #00ccff;
+            --yellow: #ffff00;
+        }
+
+        * { box-sizing: border-box; }
+        
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Consolas', 'Monaco', monospace; /* True Terminal Font */
+            padding: 20px;
+            margin: 0;
+            font-size: 14px;
+        }
+
+        /* LAYOUT */
+        .container {
+            display: grid;
+            grid-template-columns: 60% 38%; /* Logs take priority */
+            gap: 2%;
+            height: 90vh;
+        }
+
+        /* HEADER & CONTROLS */
+        .header {
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 15px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        h1 { margin: 0; font-size: 18px; text-transform: uppercase; letter-spacing: 2px; color: var(--accent); }
+
+        /* INPUTS */
+        select {
+            background: #000;
+            color: var(--accent);
+            border: 1px solid var(--border);
+            padding: 8px;
+            font-family: inherit;
+            cursor: pointer;
+        }
+        
+        button {
+            background: #111;
+            color: var(--accent);
+            border: 1px solid var(--text-dim);
+            padding: 8px 16px;
+            cursor: pointer;
+            font-family: inherit;
+            text-transform: uppercase;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+        button:hover { background: #222; border-color: var(--accent); }
+        button[type="submit"] { border: 1px solid var(--green); color: var(--green); }
+        button[type="submit"]:hover { background: #001100; }
+
+        /* LOG FEED */
+        .log-box {
+            border: 1px solid var(--border);
+            height: 100%;
+            overflow-y: auto;
+            padding: 10px;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        /* LOG EVENTS (Text Only - No Backgrounds) */
+        .line { display: none; margin-bottom: 4px; }
+        .ts { color: var(--text-dim); margin-right: 8px; }
+        
+        .evt-goal { color: var(--green); font-weight: bold; text-shadow: 0 0 5px rgba(0,255,0,0.4); }
+        .evt-miss { color: var(--red); }
+        .evt-save { color: var(--yellow); }
+        .evt-tactic { color: var(--blue); }
+        .evt-phase { color: #d8b4fe; border-top: 1px dashed #333; margin-top: 5px; padding-top: 5px; display: block; }
+        .evt-turnover { color: var(--text-dim); font-style: italic; }
+
+        /* STATS PANEL */
+        .stats-box {
+            border: 1px solid var(--border);
+            padding: 0;
+        }
+        
+        .score-header {
+            text-align: center;
+            padding: 20px;
+            border-bottom: 1px solid var(--border);
+            font-size: 48px;
+            font-weight: bold;
+            letter-spacing: 5px;
+        }
+        .blur { filter: blur(12px); user-select: none; }
+        .reveal { filter: none; transition: filter 0.5s; }
+
+        /* DATA TABLE */
+        .data-table { width: 100%; border-collapse: collapse; }
+        .data-table td { padding: 8px 12px; border-bottom: 1px solid #1a1a1a; }
+        .data-table tr:last-child td { border-bottom: none; }
+        
+        .label { text-align: center; color: var(--text-dim); font-size: 10px; letter-spacing: 1px; }
+        .val-home { text-align: left; font-weight: bold; width: 25%; }
+        .val-away { text-align: right; font-weight: bold; width: 25%; }
+        .metric { text-align: center; color: var(--text-main); width: 50%; }
+
+        /* INTEGRITY BARS (Minimal) */
+        .integrity-section { padding: 15px; border-top: 1px solid var(--border); }
+        .bar-track { background: #111; height: 4px; width: 100%; margin: 8px 0 15px 0; }
+        .bar-fill { height: 100%; transition: width 0.5s; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>>> SYSTEM_V1.5 // LIVE_FEED</h1>
+        
+        <div style="display: flex; gap: 10px;">
+            <button onclick="setSpeed(800)">1x</button>
+            <button onclick="setSpeed(50)">MAX</button>
+            <button onclick="skipAll()">SKIP</button>
+
+            <form method="post" style="display: flex; gap: 5px; margin-left: 15px;">
+                {% csrf_token %}
+                <select name="home_team">
+                    {% for t in teams %}
+                        <option value="{{ t.id }}">{{ t.name }}</option>
+                    {% endfor %}
+                </select>
+                <span style="padding: 8px; color: var(--text-dim);">VS</span>
+                <select name="away_team">
+                    {% for t in teams %}
+                        <option value="{{ t.id }}" {% if forloop.last %}selected{% endif %}>{{ t.name }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit">EXECUTE</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="container">
+        
+        <div class="log-box" id="feed">
+            {% for line in log %}
+                <div class="line">
+                    <span class="ts">>></span>
+                    <span class="
+                        {% if 'GOAL' in line %}evt-goal
+                        {% elif 'PHASE' in line %}evt-phase
+                        {% elif 'TACTICAL' in line %}evt-tactic
+                        {% elif 'SAVE' in line %}evt-save
+                        {% elif 'MISS' in line %}evt-miss
+                        {% elif 'TURNOVER' in line %}evt-turnover
+                        {% endif %}">
+                        {{ line|safe }}
+                    </span>
+                </div>
+            {% empty %}
+                <div style="color: var(--text-dim); padding: 20px; text-align: center;">
+                    // AWAITING INSTRUCTIONS...
+                </div>
+            {% endfor %}
+        </div>
+
+        <div class="stats-box">
+            {% if stats %}
+                <div id="scoreboard" class="score-header blur">
+                    {{ stats.home_score }} - {{ stats.away_score }}
+                </div>
+
+                <div class="integrity-section">
+                    <div style="display:flex; justify-content:space-between; font-size:10px; color:var(--text-dim);">
+                        <span>HOME_STRUCTURAL_INTEGRITY</span>
+                        <span>{{ stats.home_integrity_final }}%</span>
+                    </div>
+                    <div class="bar-track"><div class="bar-fill" style="width: {{ stats.home_integrity_final }}%; background: var(--blue);"></div></div>
+
+                    <div style="display:flex; justify-content:space-between; font-size:10px; color:var(--text-dim);">
+                        <span>AWAY_STRUCTURAL_INTEGRITY</span>
+                        <span>{{ stats.away_integrity_final }}%</span>
+                    </div>
+                    <div class="bar-track"><div class="bar-fill" style="width: {{ stats.away_integrity_final }}%; background: var(--red);"></div></div>
+                </div>
+
+                <table class="data-table">
+                    <tr><td colspan="3" class="label">OFFENSIVE METRICS</td></tr>
+                    <tr>
+                        <td class="val-home">{{ stats.home_possession_pct }}%</td>
+                        <td class="metric">POSSESSION</td>
+                        <td class="val-away">{{ stats.away_possession_pct }}%</td>
+                    </tr>
+                    <tr>
+                        <td class="val-home">{{ stats.home_shots }} ({{ stats.home_on_target }})</td>
+                        <td class="metric">SHOTS (ON TGT)</td>
+                        <td class="val-away">{{ stats.away_shots }} ({{ stats.away_on_target }})</td>
+                    </tr>
+                    <tr>
+                        <td class="val-home">{{ stats.home_corners }}</td>
+                        <td class="metric">CORNERS</td>
+                        <td class="val-away">{{ stats.away_corners }}</td>
+                    </tr>
+
+                    <tr><td colspan="3" class="label">PASSING & FLOW</td></tr>
+                    <tr>
+                        <td class="val-home">{{ stats.home_pass_pct }}%</td>
+                        <td class="metric">PASS ACCURACY</td>
+                        <td class="val-away">{{ stats.away_pass_pct }}%</td>
+                    </tr>
+                    <tr>
+                        <td class="val-home">{{ stats.home_passes_completed }}</td>
+                        <td class="metric">COMPLETED PASSES</td>
+                        <td class="val-away">{{ stats.away_passes_completed }}</td>
+                    </tr>
+
+                    <tr><td colspan="3" class="label">DISCIPLINE</td></tr>
+                    <tr>
+                        <td class="val-home">{{ stats.home_fouls }}</td>
+                        <td class="metric">FOULS COMMITTED</td>
+                        <td class="val-away">{{ stats.away_fouls }}</td>
+                    </tr>
+                </table>
+
+            {% else %}
+                <div style="padding: 20px; text-align: center; color: var(--text-dim);">
+                    NO DATA AVAILABLE
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <script>
+        let speed = 400; 
+        let index = 0;
+        let lines = document.getElementsByClassName("line");
+        let feed = document.getElementById("feed");
+        let scoreBoard = document.getElementById("scoreboard");
+        let timer = null;
+
+        function playTicker() {
+            if (index < lines.length) {
+                lines[index].style.display = "block";
+                
+                // Smart Scroll: Only scroll if we are near the bottom
+                // (Prevents annoying jumping if user scrolls up to read)
+                if(feed.scrollTop + feed.clientHeight >= feed.scrollHeight - 100) {
+                    feed.scrollTop = feed.scrollHeight;
+                }
+                
+                index++;
+                timer = setTimeout(playTicker, speed);
+            } else {
+                if(scoreBoard) scoreBoard.classList.remove("blur");
+                if(scoreBoard) scoreBoard.classList.add("reveal");
+            }
+        }
+
+        function setSpeed(newSpeed) { speed = newSpeed; }
+        function skipAll() { speed = 0; }
+
+        if (lines.length > 0) playTicker();
+    </script>
+
+</body>
+</html>

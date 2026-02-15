@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>TACTICAL COMMAND // LIVE</title>
+    <style>
+        /* RESET EVERYTHING */
+        * { box-sizing: border-box; }
+        
+        body {
+            background-color: #0b1120; /* Deep Navy Blue */
+            color: #ffffff;
+            font-family: 'Courier New', Courier, monospace;
+            padding: 20px;
+            margin: 0;
+        }
+
+        /* HEADER */
+        .top-bar {
+            border-bottom: 3px solid #3b82f6; 
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        /* CONTROLS */
+        .controls { display: flex; gap: 10px; align-items: center; }
+
+        button {
+            background: #22c55e; 
+            color: black;
+            font-weight: bold;
+            font-size: 16px;
+            padding: 10px 20px;
+            border: 2px solid white;
+            cursor: pointer;
+            text-transform: uppercase;
+        }
+        button:hover { background: #4ade80; }
+        
+        .speed-btn { background: #334155; color: white; font-size: 12px; padding: 5px 10px; }
+        .speed-btn:hover { background: #475569; }
+
+        /* SPLIT SCREEN */
+        .grid-container {
+            display: grid;
+            grid-template-columns: 65% 33%; 
+            gap: 2%;
+            height: 80vh;
+        }
+
+        /* LEFT: COMMENTARY */
+        .feed-box {
+            background: #1e293b;
+            border: 2px solid #475569;
+            height: 100%;
+            overflow-y: auto; /* Changed to auto for JS scrolling */
+            padding: 15px;
+            position: relative;
+        }
+        
+        /* LINE ANIMATION */
+        .line { 
+            margin-bottom: 10px; 
+            border-bottom: 1px solid #334155; 
+            padding-bottom: 5px; 
+            
+            /* KEY: Hidden by default for the script to reveal */
+            display: none; 
+            animation: fadeIn 0.3s ease-in;
+        }
+        
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* COLORS FOR EVENTS */
+        .event-goal { color: #4ade80; font-size: 1.2em; font-weight: bold; border-left: 5px solid #4ade80; padding-left: 10px; background: rgba(74, 222, 128, 0.1); }
+        .event-phase { color: #d8b4fe; border-left: 4px solid #9333ea; padding: 10px; background: #1e1b4b; margin: 10px 0; font-weight: bold; }
+        .event-tactical { color: #60a5fa; border-left: 3px solid #60a5fa; padding-left: 10px; }
+        .event-save { color: #facc15; }
+        .event-miss { color: #f87171; }
+        .event-turnover { color: #94a3b8; font-style: italic; font-size: 0.9em; }
+
+        /* RIGHT: STATS */
+        .stat-box {
+            background: #0f172a;
+            border: 2px solid #3b82f6;
+            padding: 20px;
+            height: 100%;
+        }
+
+        /* SPOILER SHIELD */
+        .big-score {
+            font-size: 60px;
+            text-align: center;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: white;
+            transition: filter 1s;
+        }
+        .blur-me { filter: blur(15px); } /* Hides score initially */
+        .reveal-me { filter: blur(0px); }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            font-size: 16px;
+            border-bottom: 1px dashed #334155;
+            padding-bottom: 5px;
+        }
+
+        /* INTEGRITY BARS */
+        .bar-container { background: #333; height: 12px; width: 100%; margin-top: 5px; border: 1px solid #555; }
+        .bar-fill { height: 100%; transition: width 0.5s; }
+    </style>
+</head>
+<body>
+
+    <div class="top-bar">
+        <h1>🧠 TACTICAL NERD ENGINE // LIVE</h1>
+        
+        <div class="controls">
+            <button class="speed-btn" onclick="setSpeed(800)">1x</button>
+            <button class="speed-btn" onclick="setSpeed(100)">⚡ Fast</button>
+            <button class="speed-btn" onclick="skipAll()">Skip</button>
+            
+            <div class="controls">
+            <form method="post" style="display: flex; gap: 10px; align-items: center;">
+                {% csrf_token %}
+                
+                <select name="home_team" style="padding: 10px; background: #1e293b; color: white; border: 1px solid #3b82f6;">
+                    {% for t in teams %}
+                        <option value="{{ t.id }}">{{ t.name }} ({{ t.style }})</option>
+                    {% endfor %}
+                </select>
+                
+                <span style="font-weight: bold; color: #60a5fa;">VS</span>
+                
+                <select name="away_team" style="padding: 10px; background: #1e293b; color: white; border: 1px solid #f87171;">
+                    {% for t in teams %}
+                        <option value="{{ t.id }}" {% if forloop.last %}selected{% endif %}>
+                            {{ t.name }} ({{ t.style }})
+                        </option>
+                    {% endfor %}
+                </select>
+
+                <button type="submit">▶ KICK OFF</button>
+            </form>
+
+            <button class="speed-btn" type="button" onclick="setSpeed(100)">⚡</button>
+            <button class="speed-btn" type="button" onclick="skipAll()">Skip</button>
+        </div>
+        
+        </div>
+    </div>
+
+    <div class="grid-container">
+        
+        <div class="feed-box" id="feed">
+            <h3 style="color: #94a3b8; border-bottom: 1px solid #333; padding-bottom: 10px; margin-top: 0;">LIVE FEED</h3>
+            
+            {% for line in log %}
+                <div class="line 
+                    {% if 'GOAL' in line %}event-goal{% endif %}
+                    {% if 'PHASE' in line %}event-phase{% endif %}
+                    {% if 'TACTICAL' in line %}event-tactical{% endif %}
+                    {% if 'SAVE' in line %}event-save{% endif %}
+                    {% if 'MISS' in line %}event-miss{% endif %}
+                    {% if 'TURNOVER' in line %}event-turnover{% endif %}">
+                    {{ line|safe }} 
+                </div>
+            {% empty %}
+                <p style="color: #666;">>> SYSTEM READY. AWAITING INPUT.</p>
+            {% endfor %}
+        </div>
+
+        <div class="stat-box">
+            <h3 style="color: #3b82f6; margin-top: 0;">MATCH STATS</h3>
+            
+            {% if stats %}
+                <div id="scoreboard" class="big-score blur-me">
+                    {{ stats.home_score }} - {{ stats.away_score }}
+                </div>
+
+                <div class="stat-row">
+                    <span>Possession</span>
+                    <span>{{ stats.home_possession_pct }}% vs {{ stats.away_possession_pct }}%</span>
+                </div>
+                
+                <div class="stat-row">
+                    <span>Shots (On Target)</span>
+                    <span>{{ stats.home_shots }}({{ stats.home_on_target }}) vs {{ stats.away_shots }}({{ stats.away_on_target }})</span>
+                </div>
+
+                <div style="margin-top: 30px;">
+                    <label style="color: #60a5fa; font-size: 12px; font-weight: bold;">HOME INTEGRITY</label>
+                    <div class="bar-container">
+                        <div class="bar-fill" style="width: {{ stats.home_integrity_final }}%; background: #3b82f6;"></div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 20px;">
+                    <label style="color: #f87171; font-size: 12px; font-weight: bold;">AWAY INTEGRITY</label>
+                    <div class="bar-container">
+                        <div class="bar-fill" style="width: {{ stats.away_integrity_final }}%; background: #f87171;"></div>
+                    </div>
+                </div>
+            {% else %}
+                <p style="color: #666;">NO DATA LOADED.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <script>
+        let speed = 600; // Milliseconds per line
+        let index = 0;
+        let lines = document.getElementsByClassName("line");
+        let feed = document.getElementById("feed");
+        let scoreBoard = document.getElementById("scoreboard");
+        let autoScroll = true;
+        let timer = null;
+
+        function playTicker() {
+            if (index < lines.length) {
+                // 1. Reveal the line
+                lines[index].style.display = "block";
+                
+                // 2. Auto Scroll to bottom
+                feed.scrollTop = feed.scrollHeight;
+                
+                // 3. Next line
+                index++;
+                timer = setTimeout(playTicker, speed);
+            } else {
+                // 4. Match Finished: Reveal the Score
+                if(scoreBoard) scoreBoard.classList.remove("blur-me");
+                if(scoreBoard) scoreBoard.classList.add("reveal-me");
+            }
+        }
+
+        function setSpeed(newSpeed) { speed = newSpeed; }
+        
+        function skipAll() {
+            speed = 0; // Instant reveal
+        }
+
+        // Start automatically if there is data
+        if (lines.length > 0) {
+            playTicker();
+        }
+    </script>
+
+</body>
+</html>

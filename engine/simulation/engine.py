@@ -1,16 +1,23 @@
 import random
+from collections import defaultdict
 from engine.models import Player as DBPlayer, Team as DBTeam
 from .player import SimPlayer
 from .state import MatchState
 from . import mechanics
 from .commentary import narrator
-from .tactics import get_tactical_mods  # <--- NEW IMPORT
+from .tactics import get_tactical_profile
+from .environment import get_environment, FIVE_V_FIVE, ELEVEN_V_ELEVEN
+from .matchups import select_duellists 
 
 # ==========================================
-# THE ENGINE (v1.5 - Modular)
+# THE ENGINE (v2.6 - Spatial & Modular)
 # ==========================================
-def play_match(home_team_name, away_team_name):
+def play_match(home_team_name, away_team_name, mode="5v5"): 
+    
     # --- SETUP PHASE ---
+    if mode == "11v11": env = ELEVEN_V_ELEVEN
+    else: env = FIVE_V_FIVE
+
     try:
         home_db = DBTeam.objects.get(name=home_team_name)
         away_db = DBTeam.objects.get(name=away_team_name)
@@ -20,87 +27,114 @@ def play_match(home_team_name, away_team_name):
     h_players = list(home_db.player_set.all())
     a_players = list(away_db.player_set.all())
 
-    if len(h_players) < 5 or len(a_players) < 5:
-        return [f"ERROR: Squads too small."], {}
+    if len(h_players) < env.squad_size or len(a_players) < env.squad_size:
+        return [f"ERROR: Squads too small for {mode}. Need {env.squad_size}."], {}
 
-    # Convert to SimPlayers
     team_home = [SimPlayer(p) for p in h_players]
     team_away = [SimPlayer(p) for p in a_players]
 
-    # --- FETCH TACTICS (From the new module) ---
-    h_mode = home_db.tactical_mode
-    a_mode = away_db.tactical_mode
-    
-    h_mods = get_tactical_mods(h_mode)
-    a_mods = get_tactical_mods(a_mode)
+    h_profile = get_tactical_profile(home_db.tactical_mode)
+    a_profile = get_tactical_profile(away_db.tactical_mode)
 
     state = MatchState(home_team_name, away_team_name)
     log = [] 
-    log.append(f"MATCH STARTED: {home_team_name} ({h_mode}) vs {away_team_name} ({a_mode})")
+    log.append(f"MATCH STARTED: {home_team_name} vs {away_team_name} (Mode: {mode})")
     
+    dominance_tracker = defaultdict(int)
     home_has_ball = True 
 
     # --- THE LOOP ---
     for minute in range(1, 91, 3): 
-        # A. Possession Count
+        # A. Possession Tracking
         if home_has_ball: state.stats['home_possession_count'] += 1
         else: state.stats['away_possession_count'] += 1
         
-        # B. Define Actors
+        # B. Define Side Context
         att_team, def_team = (team_home, team_away) if home_has_ball else (team_away, team_home)
         att_side, def_side = ('home', 'away') if home_has_ball else ('away', 'home')
-        att_mods = h_mods if home_has_ball else a_mods
-        def_mods = a_mods if home_has_ball else h_mods
+        att_profile = h_profile if home_has_ball else a_profile
+        def_profile = a_profile if home_has_ball else h_profile
         
-        carrier = random.choice([p for p in att_team if p.role != 'GK'])
-        defender = random.choice([p for p in def_team if p.role != 'GK'])
-        gk = [p for p in def_team if p.role == 'GK'][0]
-        
-        # C. Fatigue (Apply Tactical Burn Rate)
-        carrier.drain_stamina(1 * att_mods['stam'])
-        defender.drain_stamina(1 * def_mods['stam'])
+        # [v2.6] Spatial Selection
+        # matchups.py now handles the 30/40/30 zone logic
+        carrier, defender, gk, match_zone = select_duellists(att_team, def_team, mode)
 
-        # D. Mechanics with GRANULAR MULTIPLIERS
+        # Track Player Dominance
+        dominance_tracker[carrier.name] += 1
+        dominance_tracker[defender.name] += 1
+        
+        # C. Calculate Tactical Fit & Position Tax
+        att_fit = carrier.get_tactical_fit(att_profile)
+        def_fit = defender.get_tactical_fit(def_profile)
+        
+        # [v2.6] Position DNA lookup
+        zone_att_mod = carrier.zone_coverage.get(match_zone, 1.0)
+        zone_def_mod = defender.zone_coverage.get(match_zone, 1.0)
+
+        # D. Fatigue Scaling (Environment Conscious)
+        carrier.drain_stamina(env.fatigue_scale * att_profile.stam_burn * (1.0 / att_fit))
+        defender.drain_stamina(env.fatigue_scale * def_profile.stam_burn * (1.0 / def_fit))
+
+        # E. Calculate Final Multipliers (The "Chain of Logic")
         state.stats[f'{att_side}_passes_attempted'] += 1
         
-        # 1. Calculate General Integrity Modifiers
-        integ_att = state.get_integrity_mult(att_side)
-        integ_def = state.get_integrity_mult(def_side)
+        integ_att = state.get_structure_mult(att_side)
+        integ_def = state.get_structure_mult(def_side)
 
-        # 2. Apply Specific Tactical Multipliers
-        final_att_mult = integ_att * att_mods['att']
-        final_int_mult = integ_def * def_mods['int'] # Phase 1 Defense
-        final_def_mult = integ_def * def_mods['def'] # Phase 2 Defense
+        dom_att = 0.95 if dominance_tracker[carrier.name] > 4 else 1.0
+        dom_def = 0.95 if dominance_tracker[defender.name] > 4 else 1.0
 
-        # PHASE 1: Possession (Uses Interception Multiplier)
+        # [v2.6] Final Combined Multipliers - Capped at 1.15 for balance
+        # Sequence: Integrity * Tactic * Personality Fit * Dominance * Position
+        raw_att = integ_att * att_profile.att_mult * att_fit * dom_att * zone_att_mod
+        final_att_mult = min(raw_att, 1.15)
+        
+        raw_def = integ_def * def_profile.def_mult * def_fit * dom_def * zone_def_mod
+        final_def_mult = min(raw_def, 1.15)
+
+        raw_int = integ_def * def_profile.int_mult * def_fit * dom_def * zone_def_mod
+        final_int_mult = min(raw_int, 1.15)
+
+        # PHASE 1: The Possession Duel
         if mechanics.resolve_possession(carrier, defender, final_att_mult, final_int_mult):
             state.stats[f'{att_side}_passes_completed'] += 1
         else:
-            log.append(narrator.announce(minute, 'TURNOVER', player=carrier.name))
+            log.append(narrator.announce(minute, 'TURNOVER', player=carrier.name, zone=match_zone))
             home_has_ball = not home_has_ball
             continue 
 
-        # PHASE 2: Tactical Break (Uses Def Awareness Multiplier)
+        # PHASE 2: The Tactical Break
         if mechanics.resolve_tactical_break(carrier, defender, final_att_mult, final_def_mult):
-            damage = mechanics.calculate_damage(defender.current_stamina)
-            state.degrade_integrity(def_side, damage)
+            
+            # Structural Damage
+            current_struct = state.home_structure["overall"] if def_side == 'home' else state.away_structure["overall"]
+            damage = mechanics.calculate_damage(defender.current_stamina, current_struct, base_damage=env.base_damage)
+            
+            state.degrade_structure(def_side, damage)
             
             phase_msg = state.check_phase_shift(def_side, def_side)
             if phase_msg: log.append(narrator.announce(minute, 'PHASE', level=phase_msg, team=def_side.title()))
 
             log.append(narrator.announce(minute, 'TACTIC', player=carrier.name, team=def_side.title(), damage=damage))
             
-            # PHASE 3: The Shot
+            # [STEP 3] Shot Frequency Dampener (Environment Realism)
+            if random.random() > env.shot_density:
+                home_has_ball = not home_has_ball
+                continue
+
+            # PHASE 3: The Finish
             state.stats[f'{att_side}_shots'] += 1
-            striker = max(att_team, key=lambda p: p.finishing)
             
-            opp_integrity = state.home_integrity if def_side == 'home' else state.away_integrity
+            # Striker selection remains weighted by finishing & selfishness trait
+            candidates = [p for p in att_team if p.role != 'GK']
+            weights = [p.finishing * (1.15 if p.traits['selfishness'] > 0.5 else 1.0) for p in candidates]
+            striker = random.choices(candidates, weights=weights, k=1)[0]
             
-            # Safety Valve: Max Bonus capped at +20
-            integrity_bonus = (100 - opp_integrity) / 5.0 
+            opp_structure = state.home_structure["overall"] if def_side == 'home' else state.away_structure["overall"]
+            integrity_bonus = (100 - opp_structure) / 5.0 
             
-            # Dampener: Harder to score early
-            result = mechanics.resolve_finish(striker, gk, final_att_mult, integrity_bonus, minute)
+            shot_mult = integ_att * att_profile.att_mult 
+            result = mechanics.resolve_finish(striker, gk, shot_mult, integrity_bonus, minute)
             
             if result == 'GOAL':
                 state.stats[f'{att_side}_score'] += 1
@@ -120,7 +154,7 @@ def play_match(home_team_name, away_team_name):
                 if random.random() < 0.5: home_has_ball = not home_has_ball
 
         else:
-            # DEFENSIVE HOLD
+            # Defensive Hold (Fouls or Blocks)
             if random.random() < 0.1:
                 state.stats[f'{def_side}_fouls'] += 1
                 log.append(narrator.announce(minute, 'FOUL', player=defender.name))
@@ -128,7 +162,7 @@ def play_match(home_team_name, away_team_name):
                 log.append(narrator.announce(minute, 'BLOCK', player=defender.name))
                 home_has_ball = not home_has_ball
 
-    # --- POST MATCH ---
+    # --- POST MATCH POSTING ---
     total_turns = state.stats['home_possession_count'] + state.stats['away_possession_count']
     state.stats['home_possession_pct'] = int((state.stats['home_possession_count'] / total_turns) * 100) if total_turns > 0 else 50
     state.stats['away_possession_pct'] = 100 - state.stats['home_possession_pct']
@@ -138,8 +172,8 @@ def play_match(home_team_name, away_team_name):
     a_att = max(1, state.stats['away_passes_attempted'])
     state.stats['away_pass_pct'] = int((state.stats['away_passes_completed'] / a_att) * 100)
     
-    state.stats['home_integrity_final'] = int(state.home_integrity)
-    state.stats['away_integrity_final'] = int(state.away_integrity)
+    state.stats['home_integrity_final'] = int(state.home_structure["overall"])
+    state.stats['away_integrity_final'] = int(state.away_structure["overall"])
     
     log.append("FULL TIME.")
     return log, state.stats

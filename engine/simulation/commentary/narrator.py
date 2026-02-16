@@ -1,6 +1,6 @@
 import random
 
-# THE SCRIPT DATABASE
+# THE SCRIPT DATABASE (v2.6 Spatial Edition)
 PHRASES = {
     'GOAL': [
         "smashes it home!",
@@ -15,8 +15,8 @@ PHRASES = {
         "pulls off a miracle save.",
         "denies the effort with a fingertip.",
         "blocks the shot point-blank.",
-        "CAN YOU BEIEVE IT!! WHat a save",
-        "Saving this team time and time an immvable wall"
+        "CAN YOU BELIEVE IT!! What a save",
+        "An immovable wall, saving this team time and again"
     ],
     'MISS': [
         "fires wide.",
@@ -26,17 +26,18 @@ PHRASES = {
         "Quite frankly an opportunity squandered"
     ],
     'TACTIC': [
-        "breaks the defensive line.",
-        "finds space in the pocket.",
-        "exposes the gap in the structure.",
-        "splits the defense with a pass."
+        # Combined with {zone} later in the formatter
+        "breaks the defensive line through the",
+        "finds space in the pocket in the",
+        "exposes the gap in the structure via the",
+        "splits the defense with a pass down the"
     ],
     'TURNOVER': [
-        "loses possession.",
-        "is dispossessed in midfield.",
-        "misplaces the pass.",
-        "runs into a wall of defenders.",
-        "stray pass caught"
+        "loses possession in the",
+        "is dispossessed in the",
+        "misplaces a pass in the",
+        "runs into a wall of defenders in the",
+        "has a stray pass caught in the"
     ],
     'BLOCK': [
         "reads the play perfectly.",
@@ -61,15 +62,15 @@ PHASE_ALERTS = {
 }
 
 def announce(minute, event_type, **kwargs):
-    """
-    Generates a formatted log line.
-    Usage: announce(12, 'GOAL', player='Messi', score='1-0')
-    """
     player = kwargs.get('player', 'Unknown')
     team = kwargs.get('team', 'Unknown')
-    target = kwargs.get('target', 'Unknown') # e.g., Defender or Integrity amount
     
-    # 1. Handle Phase Shifts (Special Case)
+    # [v2.6] Zone Mapping
+    zone_raw = kwargs.get('zone', 'C')
+    zone_map = {'L': 'Left Wing', 'C': 'Center', 'R': 'Right Wing'}
+    zone_name = zone_map.get(zone_raw, 'Center')
+
+    # 1. Handle Phase Shifts
     if event_type == 'PHASE':
         phase_level = kwargs.get('level')
         return f"{minute}' {PHASE_ALERTS.get(phase_level, '').format(team=team)}"
@@ -77,31 +78,23 @@ def announce(minute, event_type, **kwargs):
     # 2. Select Random Phrase
     phrase = random.choice(PHRASES.get(event_type, ["Event occurred."]))
     
-    # 3. Format the String
-    text = f"{player} {phrase}"
-    
-    # 4. Add Tags based on type
+    # 3. Format based on type
     if event_type == 'GOAL':
         score = kwargs.get('score', '0-0')
-        return f"{minute}' [GOAL] {text} ({score})"
+        return f"{minute}' [GOAL] {player} {phrase} ({score})"
     
     elif event_type == 'TACTIC':
         damage = kwargs.get('damage', 0)
-        return f"{minute}' [TACTIC] {text} {team} Integrity -{damage}%"
+        # Result: "12' [TACTIC] Messi finds space in the pocket in the Left Wing! Home Integrity -5%"
+        return f"{minute}' [TACTIC] {player} {phrase} {zone_name}! {team} Integrity -{damage}%"
     
+    elif event_type == 'TURNOVER':
+        # Result: "24' [TURNOVER] Kroos misplaces a pass in the Center"
+        return f"{minute}' [TURNOVER] {player} {phrase} {zone_name}"
+
     elif event_type == 'SAVE':
         return f"{minute}' [SAVE] {player} {phrase} Corner."
-    
-    elif event_type == 'MISS':
-        return f"{minute}' [MISS] {text}"
 
-    elif event_type == 'TURNOVER':
-        return f"{minute}' [TURNOVER] {text}"
-        
-    elif event_type == 'BLOCK':
-        return f"{minute}' [BLOCK] {text}"
-
-    elif event_type == 'FOUL':
-        return f"{minute}' [FOUL] {text}"
-        
-    return f"{minute}' {text}"
+    # Standard Fallback for MISS, BLOCK, FOUL
+    text = f"{player} {phrase}"
+    return f"{minute}' [{event_type}] {text}"

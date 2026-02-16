@@ -1,12 +1,15 @@
 from django.contrib import admin
-from .models import Player, Team
+from .models import Team, Player
 
 @admin.register(Team)
-class TeamAdmin(admin.ModelAdmin):  # <--- FIXED (Removed .site)
-    list_display = ('name', 'style')
+class TeamAdmin(admin.ModelAdmin):
+    # CHANGE THIS:
+    # list_display = ('name', 'style') 
+    
+    # TO THIS:
+    list_display = ('name', 'tactical_mode')
 
 @admin.register(Player)
-class PlayerAdmin(admin.ModelAdmin): # <--- FIXED (Removed .site)
-    list_display = ('name', 'team', 'role', 'vision', 'finishing', 'stamina')
-    list_filter = ('team', 'role')
-    search_fields = ('name',)
+class PlayerAdmin(admin.ModelAdmin):
+    list_display = ('name', 'team', 'role', 'is_starting', 'stamina')
+    list_filter = ('team', 'role', 'is_starting')

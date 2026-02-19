@@ -1,0 +1,145 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SIMULATION_EXECUTION // {{ match.id }}</title>
+    <link rel="stylesheet" href="{% static 'css/match_style.css' %}">
+</head>
+<body>
+
+    <div class="sim-header">
+        <div class="team-box home">
+            <div class="team-name">{{ match.home_team.name }}</div>
+            <div class="tac-tag">HOME</div>
+        </div>
+        
+        <div class="scoreboard">
+            <div class="score-display">
+                <span id="score-home">0</span>
+                <span class="divider">-</span>
+                <span id="score-away">0</span>
+            </div>
+            <div class="meta-display">
+                <span id="sim-minute">00'</span> <span class="mode-tag">| {{ match.mode }}</span>
+            </div>
+        </div>
+
+        <div class="team-box away">
+            <div class="team-name">{{ match.away_team.name }}</div>
+            <div class="tac-tag">AWAY</div>
+        </div>
+    </div>
+
+    <div class="sim-grid">
+        
+        <div class="panel left-panel">
+            <div class="panel-title">>> STRUCTURAL INTEGRITY</div>
+            
+            <div class="struct-container">
+                <div class="struct-label">{{ match.home_team.name }}</div>
+                <div class="struct-bar-bg"><div class="struct-bar home" id="bar-home-struct" style="width: 100%;"></div></div>
+                <div class="struct-val" id="val-home-struct">100%</div>
+            </div>
+
+            <div class="struct-container">
+                <div class="struct-label">{{ match.away_team.name }}</div>
+                <div class="struct-bar-bg"><div class="struct-bar away" id="bar-away-struct" style="width: 100%;"></div></div>
+                <div class="struct-val" id="val-away-struct">100%</div>
+            </div>
+
+            <div class="panel-divider"></div>
+
+            <div class="panel-title">>> MOMENTUM GRAPH</div>
+            <div class="momentum-box">
+                <div id="momentum-indicator" class="momentum-bar"></div>
+            </div>
+        </div>
+
+        <div class="panel center-panel">
+            <div class="terminal-header">
+                <span>>> LIVE_FEED</span>
+                <span class="blink">_ACTIVE</span>
+            </div>
+            <div id="terminal-feed" class="terminal-body">
+                </div>
+        </div>
+
+        <div class="panel right-panel">
+            
+            <div class="panel-title">>> FATIGUE MONITOR (CRITICAL)</div>
+            <div id="fatigue-list" class="fatigue-list">
+                <div class="fatigue-item">
+                    <span class="f-name">ANALYZING...</span>
+                    <span class="f-val">--%</span>
+                </div>
+            </div>
+
+            <div class="panel-divider"></div>
+
+            <div class="panel-title">>> SYSTEM LOADS</div>
+            <div class="load-gauge">
+                <div class="load-label">TEMPO LOAD</div>
+                <div class="load-bar-bg"><div class="load-bar" id="load-tempo" style="width: 50%;"></div></div>
+            </div>
+            <div class="load-gauge">
+                <div class="load-label">PRESS INTENSITY</div>
+                <div class="load-bar-bg"><div class="load-bar" id="load-press" style="width: 50%;"></div></div>
+            </div>
+            <div class="load-gauge">
+                <div class="load-label">RISK EXPOSURE</div>
+                <div class="load-bar-bg"><div class="load-bar" id="load-risk" style="width: 50%;"></div></div>
+            </div>
+
+            <div class="panel-divider"></div>
+
+            <div class="panel-title">>> MICRO METRICS</div>
+            <div class="micro-stat-row">
+                <span>POSSESSION</span>
+                <span class="stat-highlight" id="live-poss">50%</span>
+            </div>
+            <div class="micro-stat-row">
+                <span>SHOTS</span>
+                <span class="stat-highlight"><span id="live-sh-h">0</span> - <span id="live-sh-a">0</span></span>
+            </div>
+            <div class="micro-stat-row">
+                <span>BREAKS</span>
+                <span class="stat-highlight" id="live-breaks">0</span>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="control-strip">
+        <div class="status-msg" id="status-msg">SIMULATION RUNNING...</div>
+        
+        <div class="controls">
+            <button onclick="togglePause()" id="btn-pause">⏸ PAUSE</button>
+            <button onclick="setSpeed(800)">x1</button>
+            <button onclick="setSpeed(200)">x4</button>
+            <button onclick="skipSim()">⏩ SKIP</button>
+            
+            <a href="{% url 'tactical_report' %}" class="btn-return" id="btn-return" style="display:none;">VIEW ANALYSIS >></a>
+        </div>
+    </div>
+
+    {{ logs|json_script:"match-logs-data" }}
+
+    <script>
+        // Context for the gauges (Passed from Engine)
+        window.matchContext = {
+            tempo: {{ stats.sys_tempo|default:3 }},
+            press: {{ stats.sys_press|default:3 }},
+            risk:  {{ stats.sys_risk|default:3 }}
+        };
+
+        window.finalStats = {
+            h_score: {{ match.home_score }},
+            a_score: {{ match.away_score }},
+            h_poss: {{ stats.home_possession_pct }},
+            h_struct: {{ stats.home_integrity_final }},
+            a_struct: {{ stats.away_integrity_final }}
+        };
+    </script>
+    <script src="{% static 'js/match_player.js' %}"></script>
+</body>
+</html>

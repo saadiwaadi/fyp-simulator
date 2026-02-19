@@ -1,0 +1,570 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>TACTICAL LAB // SYSTEM_V4_FINAL</title>
+    <style>
+        /* --- 1. AESTHETIC --- */
+        :root { 
+            --bg: #050505; --panel: #0b0b0b; --border: #222; 
+            --text: #888; --text-light: #eee; 
+            --neon-blue: #00ccff; --neon-green: #00ff41; --neon-red: #ff3333; --neon-gold: #ffd700;
+        }
+        body { background: var(--bg); color: var(--text); font-family: 'Courier New', monospace; margin: 0; height: 100vh; overflow: hidden; }
+
+        /* --- 2. LAYOUT GRID --- */
+        .app-container { display: grid; grid-template-columns: 1fr 350px; grid-template-rows: 60px 1fr 140px; height: 100vh; }
+        
+        /* HEADER */
+        .top-bar { grid-column: 1 / 3; grid-row: 1 / 2; background: var(--panel); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; padding: 0 20px; }
+        .mode-switch { background: #000; color: #fff; border: 1px solid #333; padding: 5px 15px; cursor: pointer; }
+        .btn-exe { background: #000; color: var(--neon-green); border: 1px solid var(--neon-green); padding: 8px 20px; font-weight: bold; cursor: pointer; text-transform: uppercase; transition: all 0.2s; }
+        .btn-exe:hover { background: var(--neon-green); color: #000; box-shadow: 0 0 15px var(--neon-green); }
+
+        /* PITCH AREA */
+        .pitch-container { 
+            grid-column: 1 / 2; grid-row: 2 / 3; position: relative; border-right: 1px solid var(--border); 
+            background: radial-gradient(circle at center, #111 0%, #050505 100%), linear-gradient(to bottom, transparent 33%, #222 33%, #222 34%, transparent 34%), linear-gradient(to bottom, transparent 66%, #222 66%, #222 67%, transparent 67%);
+        }
+        .zone-label { position: absolute; left: 10px; font-size: 10px; color: #333; font-weight: bold; letter-spacing: 2px; }
+        .z-att { top: 15%; } .z-mid { top: 50%; } .z-def { top: 85%; }
+
+        /* SLOTS */
+        .slot { width: 60px; height: 60px; border: 2px dashed #333; border-radius: 50%; position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; justify-content: center; transition: all 0.3s; z-index: 1; }
+        .slot.drag-over { border-color: var(--neon-green); box-shadow: 0 0 20px rgba(0, 255, 65, 0.2); }
+        .slot-name { font-size: 9px; color: #555; margin-top: 65px; position: absolute; width: 100px; text-align: center; pointer-events: none; }
+
+        /* CONSOLE (RIGHT PANEL) */
+        .console { grid-column: 2 / 3; grid-row: 2 / 4; background: var(--panel); border-left: 1px solid var(--border); padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+        
+        .p-header { border-bottom: 1px solid #333; padding-bottom: 10px; }
+        .p-title { font-size: 18px; color: #fff; font-weight: bold; text-transform: uppercase; }
+        .p-subtitle { font-size: 12px; color: var(--neon-blue); }
+
+        /* TOGGLE SWITCH (PLAYER / SYSTEM) */
+        .toggle-group { display: flex; border: 1px solid #333; margin-bottom: 10px; }
+        .toggle-btn { flex: 1; padding: 10px; text-align: center; cursor: pointer; background: #000; color: #555; font-size: 12px; font-weight: bold; }
+        .toggle-btn.active { background: #222; color: var(--text-light); border-bottom: 2px solid var(--neon-blue); }
+
+        /* PANELS */
+        .control-panel { display: none; }
+        .control-panel.active { display: block; animation: fadeIn 0.3s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* PLAYER PANEL STYLES */
+        .stat-row { display: flex; justify-content: space-between; font-size: 10px; margin-bottom: 5px; }
+        .bar-bg { width: 100%; height: 4px; background: #222; margin-bottom: 10px; }
+        .bar-fill { height: 100%; background: var(--neon-blue); width: 0%; transition: width 0.5s; }
+        .tac-label { font-size: 10px; color: var(--neon-green); margin-bottom: 5px; display: block; margin-top: 15px; }
+        .tac-select { width: 100%; background: #111; color: #fff; border: 1px solid #333; padding: 10px; font-family: 'Courier New'; }
+        
+        .fit-meter-container { background: #111; padding: 10px; border: 1px solid #333; margin-top: 15px; display: flex; align-items: center; justify-content: space-between; }
+        .fit-score { font-size: 24px; font-weight: bold; color: #555; }
+        .fit-high { color: var(--neon-green); text-shadow: 0 0 10px var(--neon-green); }
+        .fit-med { color: orange; }
+        .fit-low { color: var(--neon-red); }
+
+        /* SYSTEM PANEL STYLES */
+        .slider-group { margin-bottom: 30px; position: relative; }
+        .slider-header { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 11px; color: #ccc; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
+        .slider-wrapper { position: relative; height: 20px; display: flex; align-items: center; }
+        .slider-ticks { position: absolute; top: 50%; left: 0; width: 100%; transform: translateY(-50%); display: flex; justify-content: space-between; padding: 0 6px; pointer-events: none; z-index: 0; box-sizing: border-box; }
+        .tick { width: 4px; height: 4px; background: #444; border-radius: 50%; }
+        .slider-input { -webkit-appearance: none; width: 100%; height: 4px; background: transparent; outline: none; position: relative; z-index: 2; margin: 0; }
+        .slider-input::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: #222; border-radius: 2px; }
+        .slider-input::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; background: var(--neon-blue); cursor: pointer; border-radius: 50%; margin-top: -6px; box-shadow: 0 0 10px rgba(0, 204, 255, 0.5); border: 2px solid #000; }
+
+        .sys-feedback { background: #111; border: 1px solid #333; padding: 15px; margin-top: 30px; }
+        .feedback-item { display: flex; justify-content: space-between; font-size: 10px; margin-bottom: 5px; border-bottom: 1px dashed #222; padding-bottom: 2px; }
+        .val-low { color: var(--neon-green); } .val-med { color: orange; } .val-high { color: var(--neon-red); }
+        
+        /* BENCH & CARDS */
+        .bench { grid-column: 1 / 2; grid-row: 3 / 4; background: #080808; border-top: 1px solid var(--border); padding: 10px; overflow-x: auto; display: flex; align-items: center; gap: 10px; }
+        .card { width: 70px; height: 90px; background: #111; border: 1px solid #333; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: grab; position: relative; }
+        .card:hover { border-color: var(--neon-blue); }
+        .card.deployed { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 100%; height: 100%; background: transparent; border: none; z-index: 10; }
+        .card-role { font-size: 14px; font-weight: bold; color: #666; }
+        .card-name { font-size: 10px; color: #ccc; margin-top: 5px; text-align: center; }
+        .tiny-sta { width: 40px; height: 2px; background: #333; margin-top: 5px; }
+        .tiny-sta-fill { height: 100%; background: var(--neon-green); width: 80%; }
+
+        /* LOADING SCREEN */
+        #loader { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 9999; flex-direction: column; align-items: center; justify-content: center; }
+        .spinner { width: 50px; height: 50px; border: 5px solid #333; border-top: 5px solid var(--neon-green); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .loading-text { color: var(--neon-green); font-family: 'Courier New'; letter-spacing: 2px; animation: blink 1s infinite; }
+        @keyframes blink { 50% { opacity: 0.5; } }
+
+        /* POSITIONS */
+        .mode-5v5 #pos-GK-5 { top: 90%; left: 50%; }
+        .mode-5v5 #pos-DL-5 { top: 70%; left: 30%; }
+        .mode-5v5 #pos-DR-5 { top: 70%; left: 70%; }
+        .mode-5v5 #pos-MID-5 { top: 45%; left: 50%; }
+        .mode-5v5 #pos-FWD-5 { top: 20%; left: 50%; }
+        .mode-5v5 .slot-11 { display: none; }
+        .mode-11v11 #pos-GK { top: 92%; left: 50%; }
+        .mode-11v11 #pos-LB { top: 82%; left: 10%; }
+        .mode-11v11 #pos-LCB { top: 86%; left: 35%; }
+        .mode-11v11 #pos-RCB { top: 86%; left: 65%; }
+        .mode-11v11 #pos-RB { top: 82%; left: 90%; }
+        .mode-11v11 #pos-CDM { top: 68%; left: 50%; }
+        .mode-11v11 #pos-LCM { top: 52%; left: 30%; }
+        .mode-11v11 #pos-RCM { top: 52%; left: 70%; }
+        .mode-11v11 #pos-LW { top: 25%; left: 15%; }
+        .mode-11v11 #pos-ST { top: 18%; left: 50%; }
+        .mode-11v11 #pos-RW { top: 25%; left: 85%; }
+        .mode-11v11 .slot-5 { display: none; }
+    </style>
+</head>
+<body>
+
+    <div id="loader">
+        <div class="spinner"></div>
+        <div class="loading-text">SIMULATING MATCH...</div>
+    </div>
+
+    <div class="app-container">
+        <div class="top-bar">
+            <div style="font-weight:bold;">>> TACTICAL LAB // V4</div>
+            <div style="display:flex; gap:10px;">
+                <select class="mode-switch" id="mode-selector" onchange="changeMode(this.value)">
+                    <option value="5v5">PROTOCOL: 5v5</option>
+                    <option value="11v11">PROTOCOL: 11v11</option>
+                </select>
+                <select class="mode-switch" onchange="switchTeam(this.value)">
+                    {% for t in teams %}
+                        <option value="{{ t.id }}" {% if t.id == active_edit_team_id %}selected{% endif %}>{{ t.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button class="btn-exe" onclick="executeMission()">EXECUTE MATCH >></button>
+        </div>
+
+        <div class="pitch-container mode-5v5" id="pitch">
+            <div class="zone-label z-att">FINAL THIRD</div>
+            <div class="zone-label z-mid">MIDFIELD</div>
+            <div class="zone-label z-def">DEFENSIVE</div>
+            
+            <div class="slot slot-5" id="pos-GK-5" data-zone="GK" ondrop="drop(event)" ondragover="allowDrop(event)"><div class="slot-name">GK</div></div>
+            <div class="slot slot-5" id="pos-DL-5" data-zone="L" ondrop="drop(event)" ondragover="allowDrop(event)"><div class="slot-name">DEF L</div></div>
+            <div class="slot slot-5" id="pos-DR-5" data-zone="R" ondrop="drop(event)" ondragover="allowDrop(event)"><div class="slot-name">DEF R</div></div>
+            <div class="slot slot-5" id="pos-MID-5" data-zone="C" ondrop="drop(event)" ondragover="allowDrop(event)"><div class="slot-name">MID</div></div>
+            <div class="slot slot-5" id="pos-FWD-5" data-zone="C" ondrop="drop(event)" ondragover="allowDrop(event)"><div class="slot-name">FWD</div></div>
+
+            <div class="slot slot-11" id="pos-GK" data-zone="GK" ondrop="drop(event)" ondragover="allowDrop(event)"><div class="slot-name">GK</div></div>
+            <div class="slot slot-11" id="pos-LB" data-zone="L" ondrop="drop(event)" ondragover="allowDrop(event)"><div class="slot-name">LB</div></div>
+            <div class="slot slot-11" id="pos-LCB" data-zone="C" ondrop="drop(event)" ondragover="allowDrop(event)"><div class="slot-name">LCB</div></div>
+            <div class="slot slot-11" id="pos-RCB" data-zone="C" ondrop="drop(event)" ondragover="allowDrop(event)"><div class="slot-name">RCB</div></div>
+            <div class="slot slot-11" id="pos-RB" data-zone="R" ondrop="drop(event)" ondragover="allowDrop(event)"><div class="slot-name">RB</div></div>
+            <div class="slot slot-11" id="pos-CDM" data-zone="C" ondrop="drop(event)" ondragover="allowDrop(event)"><div class="slot-name">CDM</div></div>
+            <div class="slot slot-11" id="pos-LCM" data-zone="L" ondrop="drop(event)" ondragover="allowDrop(event)"><div class="slot-name">LCM</div></div>
+            <div class="slot slot-11" id="pos-RCM" data-zone="R" ondrop="drop(event)" ondragover="allowDrop(event)"><div class="slot-name">RCM</div></div>
+            <div class="slot slot-11" id="pos-LW" data-zone="L" ondrop="drop(event)" ondragover="allowDrop(event)"><div class="slot-name">LW</div></div>
+            <div class="slot slot-11" id="pos-ST" data-zone="C" ondrop="drop(event)" ondragover="allowDrop(event)"><div class="slot-name">ST</div></div>
+            <div class="slot slot-11" id="pos-RW" data-zone="R" ondrop="drop(event)" ondragover="allowDrop(event)"><div class="slot-name">RW</div></div>
+        </div>
+
+        <div class="console">
+            <div class="p-header">
+                <div class="p-title" id="console-title">SYSTEM CONSOLE</div>
+                <div class="p-subtitle">V4.0 // MACRO_LAYER_ACTIVE</div>
+            </div>
+
+            <div class="toggle-group">
+                <div class="toggle-btn active" onclick="toggleConsole('player')" id="btn-player">OPERATIVE</div>
+                <div class="toggle-btn" onclick="toggleConsole('system')" id="btn-system">SYSTEM IDENTITY</div>
+            </div>
+
+            <div id="panel-player" class="control-panel active">
+                <div style="font-size:10px; color:#666; margin-bottom:10px;" id="player-placeholder">SELECT UNIT ON PITCH TO EDIT</div>
+                
+                <div id="player-controls" style="display:none;">
+                    <div style="font-weight:bold; color:#fff; margin-bottom:5px;" id="con-name">NAME</div>
+                    <div style="font-size:10px; color:var(--neon-blue); margin-bottom:15px;" id="con-role">ROLE</div>
+
+                    <div class="stat-row"><span>STAMINA</span><span id="val-sta">0</span></div>
+                    <div class="bar-bg"><div class="bar-fill" id="bar-sta"></div></div>
+                    <div class="stat-row"><span>SPEED</span><span id="val-spd">0</span></div>
+                    <div class="bar-bg"><div class="bar-fill" id="bar-spd"></div></div>
+                    <div class="stat-row"><span>SHOOTING</span><span id="val-sho">0</span></div>
+                    <div class="bar-bg"><div class="bar-fill" id="bar-sho"></div></div>
+                    
+                    <div class="fit-meter-container">
+                        <div style="font-size:9px;">TACTICAL FIT</div>
+                        <div class="fit-score" id="live-fit-score">--%</div>
+                    </div>
+
+                    <label class="tac-label">INSTRUCTION</label>
+                    <select class="tac-select" id="input-instr" onchange="recalcFit()"></select>
+
+                    <label class="tac-label">DUTY</label>
+                    <select class="tac-select" id="input-sp" onchange="saveTacticLocal('sp')">
+                        <option value="">None</option>
+                        <option value="CAP">Captain</option>
+                        <option value="PEN">Penalty Taker</option>
+                        <option value="CR">Corner Taker</option>
+                        <option value="FK">Free Kick Taker</option>
+                    </select>
+                    <input type="hidden" id="active-player-id">
+                </div>
+            </div>
+
+            <div id="panel-system" class="control-panel">
+                <div class="slider-group">
+                    <div class="slider-header"><span>TEMPO</span><span id="disp-tempo">Balanced</span></div>
+                    <div class="slider-ticks"><div class="tick"></div><div class="tick"></div><div class="tick"></div><div class="tick"></div><div class="tick"></div></div>
+                    <input type="range" name="sys_tempo" min="1" max="5" value="{{ current_tactics.tempo|default:3 }}" class="slider-input" onchange="updateSystem('tempo', this.value)">
+                </div>
+
+                <div class="slider-group">
+                    <div class="slider-header"><span>WIDTH</span><span id="disp-width">Standard</span></div>
+                    <div class="slider-ticks"><div class="tick"></div><div class="tick"></div><div class="tick"></div><div class="tick"></div><div class="tick"></div></div>
+                    <input type="range" name="sys_width" min="1" max="5" value="{{ current_tactics.width|default:3 }}" class="slider-input" onchange="updateSystem('width', this.value)">
+                </div>
+
+                <div class="slider-group">
+                    <div class="slider-header"><span>DEFENSIVE LINE</span><span id="disp-depth">Standard</span></div>
+                    <div class="slider-ticks"><div class="tick"></div><div class="tick"></div><div class="tick"></div><div class="tick"></div><div class="tick"></div></div>
+                    <input type="range" name="sys_depth" min="1" max="5" value="{{ current_tactics.depth|default:3 }}" class="slider-input" onchange="updateSystem('depth', this.value)">
+                </div>
+
+                <div class="slider-group">
+                    <div class="slider-header"><span>PRESS INTENSITY</span><span id="disp-press">Balanced</span></div>
+                    <div class="slider-ticks"><div class="tick"></div><div class="tick"></div><div class="tick"></div><div class="tick"></div><div class="tick"></div></div>
+                    <input type="range" name="sys_press" min="1" max="5" value="{{ current_tactics.press|default:3 }}" class="slider-input" onchange="updateSystem('press', this.value)">
+                </div>
+
+                <div class="slider-group">
+                    <div class="slider-header"><span>RISK / CREATIVITY</span><span id="disp-risk">Calculated</span></div>
+                    <div class="slider-ticks"><div class="tick"></div><div class="tick"></div><div class="tick"></div><div class="tick"></div><div class="tick"></div></div>
+                    <input type="range" name="sys_risk" min="1" max="5" value="{{ current_tactics.risk|default:3 }}" class="slider-input" onchange="updateSystem('risk', this.value)">
+                </div>
+
+                <div class="sys-feedback">
+                    <div style="font-size:9px; color:#555; margin-bottom:5px;">SYSTEM DIAGNOSTIC</div>
+                    <div class="feedback-item"><span>FATIGUE LOAD</span><span id="sys-fatigue" class="val-med">MODERATE</span></div>
+                    <div class="feedback-item"><span>STRUCTURE RISK</span><span id="sys-struct" class="val-med">BALANCED</span></div>
+                    <div class="feedback-item"><span>PASSING DIRECTNESS</span><span id="sys-pass" class="val-med">MIXED</span></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bench" id="bench">
+            <div style="font-size:10px; writing-mode:vertical-rl; color:#444;">RESERVES</div>
+            {% for p in players %}
+            <div class="card" id="p-{{ p.id }}" draggable="true" ondragstart="drag(event)" onclick="inspectPlayer('{{ p.id }}')"
+                 data-id="{{ p.id }}" data-name="{{ p.name }}" data-role="{{ p.role }}"
+                 data-sta="{{ p.stamina }}" data-spd="{{ p.speed }}" data-sho="{{ p.shooting }}" data-def="{{ p.defense }}"
+                 data-slot-5="{{ p.slot_5v5|default:'' }}" 
+                 data-slot-11="{{ p.slot_11v11|default:'' }}"
+                 data-instr="{{ p.tactical_instruction }}" data-sp="{{ p.set_piece_role }}">
+                <div class="card-role">{{ p.role }}</div>
+                <div class="card-name">{{ p.name }}</div>
+                <div class="tiny-sta"><div class="tiny-sta-fill" style="width:{{ p.stamina }}%"></div></div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <form method="post" id="exe-form" style="display:none;">
+        {% csrf_token %}
+        <input type="hidden" name="match_mode" id="form-mode" value="5v5">
+        <input type="hidden" name="home_team" value="{{ active_edit_team_id }}">
+        <input type="hidden" name="away_team" id="form-away" value="">
+        <div id="form-data"></div>
+    </form>
+
+    <script>
+        // --- 0. DATA & CONFIG ---
+        const TACTICAL_MENUS = {
+            'GK':    [ { val: 'Standard', name: 'Traditional' }, { val: 'Sweeper Keeper', name: 'Sweeper Keeper' }, { val: 'Cross Claimer', name: 'Cross Claimer' } ],
+            'DEF_C': [ { val: 'Stay Back', name: 'Stay Back' }, { val: 'Ball Playing', name: 'Ball Playing Def' }, { val: 'Aggressive', name: 'Step Up (Stopper)' }, { val: 'Play as Striker', name: 'Emergency Striker' } ],
+            'DEF_W': [ { val: 'Balanced', name: 'Balanced' }, { val: 'Join Attack', name: 'Overlap' }, { val: 'Stay Back', name: 'Stay Back' }, { val: 'Invert', name: 'Inverted Fullback' } ],
+            'MID_C': [ { val: 'Balanced', name: 'Balanced' }, { val: 'Cover Center', name: 'Cover Center' }, { val: 'Cover Wing', name: 'Cover Wing' }, { val: 'Get Forward', name: 'Box Crashing' }, { val: 'Deep Playmaker', name: 'Deep Playmaker' } ],
+            'MID_W': [ { val: 'Balanced', name: 'Balanced' }, { val: 'Cut Inside', name: 'Cut Inside' }, { val: 'Stay Wide', name: 'Hug Sideline' }, { val: 'Free Roam', name: 'Free Roam' } ],
+            'FWD_C': [ { val: 'Balanced', name: 'Balanced' }, { val: 'Get In Behind', name: 'Get In Behind' }, { val: 'False 9', name: 'False 9' }, { val: 'Target Man', name: 'Target Man' }, { val: 'Press Line', name: 'Pressing Forward' } ],
+            'FWD_W': [ { val: 'Balanced', name: 'Balanced' }, { val: 'Cut Inside', name: 'Cut Inside' }, { val: 'Stay Wide', name: 'Stay Wide' }, { val: 'Come Back', name: 'Track Back' } ]
+        };
+
+        const SLOT_CONTEXT_MAP = {
+            'pos-GK-5': 'GK', 'pos-DL-5': 'DEF_W', 'pos-DR-5': 'DEF_W', 'pos-MID-5': 'MID_C', 'pos-FWD-5': 'FWD_C',
+            'pos-GK': 'GK', 'pos-LB': 'DEF_W', 'pos-RB': 'DEF_W', 'pos-LCB': 'DEF_C', 'pos-RCB': 'DEF_C',
+            'pos-CDM': 'MID_C', 'pos-LCM': 'MID_C', 'pos-RCM': 'MID_C', 'pos-LW': 'FWD_W', 'pos-RW': 'FWD_W', 'pos-ST': 'FWD_C'
+        };
+
+        const ROLE_WEIGHTS = {
+            'Standard': { 'sta':1, 'spd':1, 'sho':1, 'def':1, 'pas':1 },
+            'Sweeper Keeper': { 'spd':4, 'pas':3, 'def':1 }, 'Cross Claimer': { 'def':4, 'sta':2 },
+            'Stay Back': { 'def':4, 'sta':2 }, 'Ball Playing': { 'pas':4, 'def':2 }, 'Aggressive': { 'def':3, 'spd':3 }, 'Play as Striker': { 'sho':3, 'def':2 },
+            'Join Attack': { 'sta':4, 'spd':3, 'pas':2 }, 'Invert': { 'pas':4, 'def':2, 'sta':2 },
+            'Cover Center': { 'def':4, 'sta':3 }, 'Cover Wing': { 'spd':3, 'sta':3 }, 'Get Forward': { 'sho':3, 'pas':2, 'sta':2 }, 'Deep Playmaker': { 'pas':5, 'def':1 },
+            'Cut Inside': { 'spd':3, 'sho':4, 'pas':1 }, 'Stay Wide': { 'spd':4, 'pas':3 }, 'Free Roam': { 'pas':3, 'spd':2, 'sho':2 },
+            'Get In Behind': { 'spd':5, 'sho':2 }, 'False 9': { 'pas':4, 'sho':2, 'spd':1 }, 'Target Man': { 'sta':5, 'sho':2, 'def':2 }, 'Press Line': { 'sta':5, 'spd':3 }, 'Come Back': { 'sta':4, 'def':3 }
+        };
+
+        let tacticalMemory = { '5v5': {}, '11v11': {} };
+
+        // --- 1. UI LOGIC ---
+        function toggleConsole(panel) {
+            document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('btn-' + panel).classList.add('active');
+            document.querySelectorAll('.control-panel').forEach(p => p.classList.remove('active'));
+            document.getElementById('panel-' + panel).classList.add('active');
+        }
+
+        const SYSTEM_LABELS = {
+            'tempo': ['Slow', 'Patient', 'Balanced', 'Fast', 'High Octane'],
+            'width': ['Narrow', 'Compact', 'Standard', 'Wide', 'Stretch'],
+            'depth': ['Low Block', 'Deep', 'Standard', 'High Line', 'Suicidal'],
+            'press': ['Stand Off', 'Cautious', 'Balanced', 'Aggressive', 'Gegenpress'],
+            'risk':  ['Safe', 'Recycle', 'Calculated', 'Direct', 'Creative Chaos']
+        };
+
+        function updateSystem(key, val) {
+            document.getElementById('disp-' + key).innerText = SYSTEM_LABELS[key][val-1];
+            calcSystemFeedback();
+        }
+
+        function calcSystemFeedback() {
+            let tempo = parseInt(document.querySelector('input[name="sys_tempo"]').value);
+            let press = parseInt(document.querySelector('input[name="sys_press"]').value);
+            let depth = parseInt(document.querySelector('input[name="sys_depth"]').value);
+            let risk  = parseInt(document.querySelector('input[name="sys_risk"]').value);
+
+            let load = tempo + press;
+            let f_el = document.getElementById('sys-fatigue');
+            if(load > 7) { f_el.innerText = "CRITICAL"; f_el.className = "val-high"; }
+            else if(load > 5) { f_el.innerText = "HEAVY"; f_el.className = "val-med"; }
+            else { f_el.innerText = "OPTIMAL"; f_el.className = "val-low"; }
+
+            let riskScore = depth + (risk > 3 ? 1 : 0);
+            let s_el = document.getElementById('sys-struct');
+            if(riskScore > 4) { s_el.innerText = "EXPOSED"; s_el.className = "val-high"; }
+            else { s_el.innerText = "SOLID"; s_el.className = "val-low"; }
+
+            let p_el = document.getElementById('sys-pass');
+            if(risk < 3) p_el.innerText = "SHORT / SAFE";
+            else if(risk > 3) p_el.innerText = "LONG / RISKY";
+            else p_el.innerText = "MIXED";
+        }
+
+        function changeMode(newMode, isInit = false) {
+            const pitch = document.getElementById('pitch');
+            const currentMode = pitch.classList.contains('mode-5v5') ? '5v5' : '11v11';
+
+            if (!isInit) {
+                const currentSlots = document.querySelectorAll(`.mode-${currentMode} .slot`);
+                tacticalMemory[currentMode] = {}; 
+                currentSlots.forEach(slot => {
+                    const card = slot.querySelector('.card');
+                    if(card) tacticalMemory[currentMode][card.id] = slot.id;
+                });
+            }
+
+            const bench = document.getElementById('bench');
+            document.querySelectorAll('.card').forEach(c => { c.classList.remove('deployed'); bench.appendChild(c); });
+            
+            pitch.className = `pitch-container mode-${newMode}`;
+            document.getElementById('form-mode').value = newMode;
+            document.getElementById('mode-selector').value = newMode;
+
+            const savedLayout = tacticalMemory[newMode];
+            for (const [cardId, slotId] of Object.entries(savedLayout)) {
+                const card = document.getElementById(cardId);
+                const slot = document.getElementById(slotId);
+                if (card && slot) {
+                    slot.appendChild(card);
+                    card.classList.add('deployed');
+                }
+            }
+        }
+
+        function allowDrop(ev) { ev.preventDefault(); ev.currentTarget.classList.add('drag-over'); }
+        function drag(ev) { ev.dataTransfer.setData("text", ev.target.id); }
+        function drop(ev) {
+            ev.preventDefault(); ev.currentTarget.classList.remove('drag-over');
+            let card = document.getElementById(ev.dataTransfer.getData("text"));
+            let slot = ev.target.closest('.slot');
+            if(slot) {
+                if (slot.getAttribute('data-zone') === 'GK' && card.getAttribute('data-role') !== 'GK') {
+                    alert("TACTICAL ERROR: ONLY SPECIALIST GOALKEEPERS."); return; 
+                }
+                let existing = slot.querySelector('.card');
+                if (existing && existing.id !== card.id) {
+                    document.getElementById('bench').appendChild(existing); existing.classList.remove('deployed');
+                }
+                slot.appendChild(card); card.classList.add('deployed');
+                let mode = document.getElementById('form-mode').value;
+                tacticalMemory[mode][card.id] = slot.id;
+                inspectPlayer(card.getAttribute('data-id'));
+            }
+        }
+
+        function inspectPlayer(pid) {
+            toggleConsole('player');
+            document.getElementById('player-placeholder').style.display = 'none';
+            document.getElementById('player-controls').style.display = 'block';
+
+            let card = document.getElementById('p-' + pid);
+            let role = card.getAttribute('data-role');
+            let slot = card.parentElement;
+            let slotId = slot.classList.contains('slot') ? slot.id : null;
+
+            document.getElementById('con-name').innerText = card.getAttribute('data-name');
+            document.getElementById('con-role').innerText = role;
+            document.getElementById('active-player-id').value = pid;
+
+            updateStat('sta', card.getAttribute('data-sta'));
+            updateStat('spd', card.getAttribute('data-spd'));
+            updateStat('sho', card.getAttribute('data-sho'));
+            
+            populateDropdown(slotId, card.getAttribute('data-instr'));
+            document.getElementById('input-sp').value = card.getAttribute('data-sp') || "";
+            recalcFit();
+        }
+
+        function populateDropdown(slotId, currentSelection) {
+            const select = document.getElementById('input-instr');
+            select.innerHTML = "";
+            let contextKey = SLOT_CONTEXT_MAP[slotId] || 'MID_C'; 
+            const options = TACTICAL_MENUS[contextKey] || [{val:'Standard', name:'Standard'}];
+            options.forEach(opt => {
+                let el = document.createElement('option');
+                el.value = opt.val;
+                el.innerText = opt.name;
+                select.appendChild(el);
+            });
+            select.value = (currentSelection && options.some(o => o.val === currentSelection)) ? currentSelection : options[0].val;
+        }
+
+        function recalcFit() {
+            const pid = document.getElementById('active-player-id').value; if(!pid) return;
+            const card = document.getElementById('p-' + pid);
+            const instr = document.getElementById('input-instr').value;
+            card.setAttribute('data-instr', instr);
+
+            const weights = ROLE_WEIGHTS[instr] || ROLE_WEIGHTS['Standard'];
+            const s = {
+                'sta': parseInt(card.getAttribute('data-sta')), 'spd': parseInt(card.getAttribute('data-spd')),
+                'sho': parseInt(card.getAttribute('data-sho')), 'def': 50
+            };
+            s['pas'] = Math.round((s.sho + s.spd)/2); 
+
+            let score = 0, max = 0;
+            for (const [k, w] of Object.entries(weights)) { score += (s[k] || 50) * w; max += 100 * w; }
+            const pct = Math.round((score / max) * 100);
+            const el = document.getElementById('live-fit-score');
+            el.innerText = pct + "%";
+            el.className = 'fit-score ' + (pct > 85 ? 'fit-high' : pct > 70 ? 'fit-med' : 'fit-low');
+        }
+
+        function saveTacticLocal(type) {
+            let pid = document.getElementById('active-player-id').value; if(!pid) return;
+            let card = document.getElementById('p-' + pid);
+            let val = document.getElementById('input-' + type).value;
+            if (type === 'sp' && val !== "") {
+                ['CAP', 'PEN', 'CR', 'FK'].forEach(role => {
+                    if (val === role) {
+                        document.querySelectorAll('.card').forEach(c => {
+                            if (c.id !== card.id && c.getAttribute('data-sp') === role) c.setAttribute('data-sp', "");
+                        });
+                    }
+                });
+            }
+            card.setAttribute('data-' + type, val);
+        }
+
+        function updateStat(k, v) { 
+            let valEl = document.getElementById('val-'+k);
+            let barEl = document.getElementById('bar-'+k);
+            if(valEl && barEl) { valEl.innerText = v; barEl.style.width = v+'%'; }
+        }
+
+        function addHidden(p, n, v) { let i = document.createElement('input'); i.type='hidden'; i.name=n; i.value=v; p.appendChild(i); }
+
+        // FIX 3: Master function to scrape all data before submitting
+        function buildFormPayload(container) {
+            container.innerHTML = "";
+            
+            // 1. Get Players
+            let cards = document.querySelectorAll('.card.deployed');
+            cards.forEach(c => {
+                let pid = c.getAttribute('data-id');
+                let slot = c.parentElement;
+                addHidden(container, 'starting_players', pid);
+                addHidden(container, `slot_${pid}`, slot.id); 
+                addHidden(container, `instruction_${pid}`, c.getAttribute('data-instr')||"");
+                addHidden(container, `set_piece_${pid}`, c.getAttribute('data-sp')||"");
+            });
+
+            // 2. Get Sliders directly from the UI
+            addHidden(container, 'sys_tempo', document.querySelector('input[name="sys_tempo"]').value);
+            addHidden(container, 'sys_width', document.querySelector('input[name="sys_width"]').value);
+            addHidden(container, 'sys_depth', document.querySelector('input[name="sys_depth"]').value);
+            addHidden(container, 'sys_press', document.querySelector('input[name="sys_press"]').value);
+            addHidden(container, 'sys_risk',  document.querySelector('input[name="sys_risk"]').value);
+        }
+
+        function switchTeam(newTeamId) {
+            document.getElementById('loader').style.display = 'flex';
+            let form = document.getElementById('exe-form');
+            
+            // Remove the 'execute_match' flag so the backend knows we are just switching, not playing
+            let execFlag = form.querySelector('input[name="execute_match"]');
+            if(execFlag) execFlag.remove();
+
+            addHidden(form, 'edit_team_id', newTeamId);
+            buildFormPayload(document.getElementById('form-data'));
+            setTimeout(() => { form.submit(); }, 50);
+        }
+
+        function executeMission() {
+            let mode = document.getElementById('form-mode').value;
+            let req = (mode === '5v5') ? 5 : 11;
+            let cards = document.querySelectorAll('.card.deployed');
+
+            if(cards.length < req) { 
+                alert(`SQUAD UNDERSTRENGTH. ${mode} REQUIRES ${req}.`); 
+                return; 
+            }
+
+            document.getElementById('loader').style.display = 'flex';
+            let form = document.getElementById('exe-form');
+            
+            // Ensure the execute flag exists
+            if(!form.querySelector('input[name="execute_match"]')) {
+                addHidden(form, 'execute_match', 'true');
+            }
+
+            {% for t in teams %}
+                if("{{ t.id }}" != "{{ active_edit_team_id }}") document.getElementById('form-away').value = "{{ t.id }}";
+            {% endfor %}
+
+            buildFormPayload(document.getElementById('form-data'));
+            setTimeout(() => { form.submit(); }, 50);
+        }
+
+        // --- SMART INITIALIZATION ---
+        window.onload = function() {
+            let cards = document.querySelectorAll('.card');
+            let count5 = 0; let count11 = 0;
+
+            cards.forEach(c => {
+                let s5 = c.getAttribute('data-slot-5');
+                let s11 = c.getAttribute('data-slot-11');
+                if(s5 && s5 !== 'None' && s5 !== '') { tacticalMemory['5v5'][c.id] = s5; count5++; }
+                if(s11 && s11 !== 'None' && s11 !== '') { tacticalMemory['11v11'][c.id] = s11; count11++; }
+            });
+
+            let initialMode = (count11 > 5) ? '11v11' : '5v5';
+            changeMode(initialMode, true);
+
+            // Trigger slider text updates so they don't incorrectly display "Balanced" on load
+            ['tempo', 'width', 'depth', 'press', 'risk'].forEach(key => {
+                let el = document.querySelector(`input[name="sys_${key}"]`);
+                if(el) updateSystem(key, el.value);
+            });
+        };
+    </script>
+</body>
+</html>

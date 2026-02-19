@@ -1,0 +1,76 @@
+/* SYSTEM_V4 MATCH STYLES */
+:root {
+    --bg: #050505; --panel: #0f0f0f; --border: #333;
+    --text: #888; --highlight: #eee;
+    --term-green: #00ff41; --term-red: #ff3333; --term-blue: #00ccff; --term-yel: #ffd700;
+}
+
+body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Consolas', 'Courier New', monospace; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+/* HEADER */
+.sim-header { height: 60px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 40px; background: #0a0a0a; }
+.team-box { text-align: center; width: 200px; }
+.team-name { font-weight: bold; color: var(--highlight); font-size: 16px; text-transform: uppercase; letter-spacing: 1px; }
+.tac-tag { font-size: 10px; color: #555; border: 1px solid #333; display: inline-block; padding: 2px 6px; margin-top: 4px; }
+
+.scoreboard { text-align: center; }
+.score-display { font-size: 32px; font-weight: bold; color: var(--highlight); letter-spacing: 5px; }
+.meta-display { font-size: 12px; color: var(--term-blue); margin-top: -5px; }
+
+/* GRID */
+.sim-grid { flex: 1; display: grid; grid-template-columns: 25% 50% 25%; height: calc(100vh - 110px); }
+.panel { border-right: 1px solid var(--border); padding: 20px; display: flex; flex-direction: column; overflow: hidden; }
+.panel-title { font-size: 11px; color: #555; border-bottom: 1px solid #222; padding-bottom: 5px; margin-bottom: 15px; font-weight: bold; text-transform: uppercase; }
+.panel-divider { height: 1px; background: #222; margin: 20px 0; }
+
+/* LEFT: STRUCTURE */
+.struct-container { margin-bottom: 20px; }
+.struct-label { font-size: 12px; margin-bottom: 5px; color: #ccc; }
+.struct-bar-bg { height: 6px; background: #222; width: 100%; }
+.struct-bar { height: 100%; transition: width 0.5s; }
+.struct-bar.home { background: var(--term-blue); }
+.struct-bar.away { background: var(--term-red); }
+.struct-val { font-size: 10px; text-align: right; margin-top: 2px; color: #666; }
+
+.momentum-box { height: 10px; background: #222; margin-top: 10px; position: relative; overflow: hidden; }
+.momentum-bar { width: 10px; height: 100%; background: #fff; position: absolute; left: 50%; transition: left 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+
+/* CENTER: TERMINAL */
+.center-panel { background: #000; padding: 0; border-right: 1px solid var(--border); }
+.terminal-header { padding: 10px 20px; border-bottom: 1px solid #222; font-size: 12px; color: #666; background: #080808; }
+.terminal-body { flex: 1; overflow-y: auto; padding: 20px; font-size: 13px; line-height: 1.6; }
+.log-entry { margin-bottom: 8px; opacity: 0; animation: fadeIn 0.2s forwards; display: flex; gap: 10px; }
+.log-time { color: #555; min-width: 30px; }
+.log-text { color: #ccc; }
+
+.log-goal { color: var(--term-yel); font-weight: bold; border-left: 2px solid var(--term-yel); padding-left: 10px; }
+.log-tactic { color: var(--term-blue); }
+.log-foul { color: var(--term-red); }
+.log-save { color: var(--term-green); }
+
+/* RIGHT: ANALYTICS */
+/* Fatigue */
+.fatigue-item { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 11px; }
+.f-name { color: #aaa; }
+.f-val { color: var(--term-red); font-weight: bold; }
+
+/* Load Gauges */
+.load-gauge { margin-bottom: 10px; }
+.load-label { font-size: 9px; color: #666; margin-bottom: 3px; }
+.load-bar-bg { width: 100%; height: 4px; background: #222; }
+.load-bar { height: 100%; background: var(--term-yel); }
+
+/* Micro Stats */
+.micro-stat-row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 11px; border-bottom: 1px dashed #222; padding-bottom: 5px; }
+.stat-highlight { color: #fff; font-weight: bold; }
+
+/* BOTTOM STRIP */
+.control-strip { height: 50px; border-top: 1px solid var(--border); background: #0a0a0a; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; }
+.status-msg { font-size: 12px; color: var(--term-green); letter-spacing: 1px; }
+.controls button, .btn-return { background: #111; border: 1px solid #333; color: #ccc; padding: 6px 15px; cursor: pointer; font-family: inherit; font-size: 11px; margin-left: 5px; text-decoration: none; display: inline-block; font-weight: bold; }
+.controls button:hover, .btn-return:hover { border-color: var(--term-blue); color: var(--term-blue); }
+.btn-return { border-color: var(--term-green); color: var(--term-green); }
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+.blink { animation: blink 1s infinite; }
+@keyframes blink { 50% { opacity: 0.5; } }

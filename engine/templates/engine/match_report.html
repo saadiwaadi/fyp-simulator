@@ -1,0 +1,160 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>TACTICAL AUTOPSY // REPORT</title>
+    <style>
+        :root { --bg: #080808; --panel: #111; --border: #333; --accent: #00ff41; --text: #aaa; --crit: #ff3333; --blue: #00ccff; }
+        body { background: var(--bg); color: var(--text); font-family: 'Courier New', monospace; padding: 20px; display: flex; justify-content: center; }
+        
+        .report-container { width: 1100px; display: grid; grid-template-columns: 1.5fr 1fr; gap: 20px; }
+        
+        /* HEADER */
+        .header { grid-column: 1 / -1; border-bottom: 2px solid var(--border); padding-bottom: 20px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end; }
+        .match-title { font-size: 32px; color: #fff; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; }
+        .outcome-tag { background: #222; color: var(--accent); padding: 8px 12px; font-size: 12px; border: 1px solid var(--accent); font-weight: bold; }
+        
+        /* PANELS */
+        .panel { background: var(--panel); border: 1px solid var(--border); padding: 20px; margin-bottom: 20px; }
+        .p-title { font-size: 11px; text-transform: uppercase; color: #666; border-bottom: 1px solid #333; padding-bottom: 8px; margin-bottom: 15px; font-weight: bold; letter-spacing: 1px; }
+        
+        /* TIMELINE */
+        .timeline-row { display: flex; align-items: center; margin-bottom: 8px; font-size: 10px; }
+        .time-lbl { width: 30px; color: #555; }
+        .bar-wrapper { flex: 1; display: flex; gap:4px; }
+        .bar-c-l { flex: 1; height: 8px; background: #222; display:flex; justify-content:flex-end; }
+        .bar-c-r { flex: 1; height: 8px; background: #222; display:flex; justify-content:flex-start; }
+        .bar-fill { height: 100%; }
+        .bf-home { background: var(--blue); } .bf-away { background: var(--crit); }
+        
+        /* DIAGNOSTICS GRID */
+        .diag-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .metric-box { border-left: 2px solid #444; padding-left: 10px; }
+        .m-lbl { font-size: 10px; color: #666; text-transform: uppercase; }
+        .m-val { font-size: 14px; color: #eee; font-weight: bold; }
+        
+        /* TURNING POINT */
+        .tp-box { background: rgba(255, 51, 51, 0.1); border: 1px solid var(--crit); padding: 15px; margin-bottom: 20px; }
+        .tp-head { color: var(--crit); font-size: 11px; font-weight: bold; margin-bottom: 5px; }
+        .tp-body { color: #fff; font-size: 13px; line-height: 1.4; }
+
+        /* DETAILED IMPACT */
+        .impact-card { display: flex; justify-content: space-between; border-bottom: 1px dashed #333; padding: 10px 0; }
+        .ic-main { display: flex; gap: 10px; align-items: baseline; }
+        .ic-rank { color: var(--accent); font-weight: bold; font-size: 14px; }
+        .ic-name { color: #fff; font-weight: bold; font-size: 13px; }
+        .ic-score { color: var(--accent); font-size: 14px; }
+        .ic-details { margin-top: 5px; margin-left: 25px; display: flex; flex-direction: column; gap: 2px; }
+        .ic-det-row { font-size: 10px; color: #888; }
+
+        /* ZONE DOMINANCE */
+        .zone-row { display: flex; justify-content: space-between; font-size: 11px; padding: 5px 0; border-bottom: 1px solid #222; }
+        .z-name { color: #ccc; }
+        .z-win { color: var(--blue); font-weight: bold; }
+
+        /* ATTRIBUTION BAR */
+        .attr-bar { display: flex; height: 6px; width: 100%; background: #222; margin-top: 5px; }
+        .ab-sys { background: var(--accent); }
+        .ab-var { background: #444; }
+
+        .footer { grid-column: 1 / -1; margin-top: 20px; display: flex; justify-content: flex-end; }
+        .btn { background: #000; border: 1px solid #444; color: #eee; padding: 12px 25px; text-decoration: none; font-size: 12px; cursor: pointer; text-transform: uppercase; }
+        .btn:hover { border-color: var(--accent); color: var(--accent); }
+    </style>
+</head>
+<body>
+
+    <div class="report-container">
+        <div class="header">
+            <div>
+                <div class="match-title">{{ stats.home_score }} - {{ stats.away_score }}</div>
+                <div style="font-size:11px; margin-top:8px; color:#666;">TACTICAL AUTOPSY // V3.5</div>
+            </div>
+            <div class="outcome-tag">{{ analysis.outcome_type }}</div>
+        </div>
+
+        <div>
+            <div class="tp-box">
+                <div class="tp-head">⚠ CRITICAL TURNING POINT DETECTED</div>
+                <div class="tp-body">{{ analysis.turning_point }}</div>
+            </div>
+
+            <div class="panel">
+                <div class="p-title">>> STRUCTURAL INTEGRITY TIMELINE</div>
+                {% for snap in analysis.timeline %}
+                <div class="timeline-row">
+                    <div class="time-lbl">{{ snap.min }}'</div>
+                    <div class="bar-wrapper">
+                        <div class="bar-c-l"><div class="bar-fill bf-home" style="width: {{ snap.h_struct }}%;"></div></div>
+                        <div class="bar-c-r"><div class="bar-fill bf-away" style="width: {{ snap.a_struct }}%;"></div></div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="panel">
+                <div class="p-title">>> SYSTEM DIAGNOSTICS</div>
+                <div class="diag-grid">
+                    <div class="metric-box">
+                        <div class="m-lbl">System Execution</div>
+                        <div class="m-val">{{ analysis.ratings.system_execution }}</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="m-lbl">Press Sustainability</div>
+                        <div class="m-val">{{ analysis.ratings.press_sustainability }}</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="m-lbl">Structural Stability</div>
+                        <div class="m-val">{{ analysis.ratings.structural_stability }}</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="m-lbl">Outcome Attribution</div>
+                        <div class="m-val" style="font-size:11px;">Sys: {{ analysis.attribution.system }} | Var: {{ analysis.attribution.variance }}</div>
+                        <div class="attr-bar">
+                            <div class="ab-sys" style="width: {{ analysis.attribution.system }};"></div>
+                            <div class="ab-var" style="width: {{ analysis.attribution.variance }};"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div>
+            <div class="panel">
+                <div class="p-title">>> PLAYER IMPACT BREAKDOWN</div>
+                {% for p in analysis.impact %}
+                <div class="impact-card">
+                    <div style="flex:1;">
+                        <div class="ic-main">
+                            <span class="ic-rank">#{{ forloop.counter }}</span>
+                            <span class="ic-name">{{ p.name }}</span>
+                        </div>
+                        <div class="ic-details">
+                            {% for det in p.details %}
+                            <div class="ic-det-row">{{ det }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="ic-score">+{{ p.total }}</div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="panel">
+                <div class="p-title">>> ZONE DOMINANCE SUMMARY</div>
+                {% for z in analysis.zones %}
+                <div class="zone-row">
+                    <span class="z-name">{{ z.name }} Channel</span>
+                    <span class="z-win">{{ z.winner }} (+{{ z.margin }})</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="footer">
+            <a href="{% url 'tactical_lab' %}" class="btn">Adjust Tactics & Re-Run</a>
+        </div>
+    </div>
+
+</body>
+</html>

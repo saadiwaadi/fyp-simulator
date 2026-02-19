@@ -1,0 +1,110 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>POST-MATCH ANALYSIS // [{{ match.id }}]</title>
+    <style>
+        /* AESTHETIC: Dark Report Mode */
+        :root { --bg: #080808; --panel: #111; --text: #888; --light: #eee; --accent: #00ff41; --red: #ff3333; --blue: #00ccff; }
+        body { background: var(--bg); color: var(--text); font-family: 'Courier New', monospace; padding: 40px; }
+        
+        .report-container { max-width: 1000px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+        
+        /* HEADER SECTION */
+        .header { grid-column: span 2; border-bottom: 2px solid var(--panel); padding-bottom: 20px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: end; }
+        .match-id { font-size: 10px; color: var(--text); letter-spacing: 2px; }
+        .score-final { font-size: 48px; color: var(--light); font-weight: bold; }
+        
+        /* DATA PANELS */
+        .panel { background: var(--panel); padding: 20px; border: 1px solid #222; }
+        h3 { color: var(--accent); border-bottom: 1px dashed #333; padding-bottom: 10px; margin-top: 0; font-size: 14px; letter-spacing: 1px; }
+
+        /* METRIC BARS */
+        .stat-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 12px; }
+        .bar-container { height: 6px; background: #000; width: 100%; margin: 5px 0 15px 0; display: flex; }
+        .bar-fill { height: 100%; transition: width 1s; }
+        .bar-home { background: var(--blue); }
+        .bar-away { background: var(--red); }
+
+        /* LOG DUMP */
+        .log-dump { height: 300px; overflow-y: auto; font-size: 11px; color: #555; border-top: 1px solid #333; padding-top: 10px; }
+        .highlight { color: var(--light); }
+
+        /* NAV BUTTON */
+        .btn-return { 
+            grid-column: span 2; text-align: center; margin-top: 40px; 
+            padding: 20px; border: 1px solid var(--text); color: var(--text); text-decoration: none; 
+            transition: all 0.3s; 
+        }
+        .btn-return:hover { background: var(--light); color: var(--bg); border-color: var(--light); }
+    </style>
+</head>
+<body>
+
+    <div class="report-container">
+        
+        <div class="header">
+            <div>
+                <div class="match-id">Match_ID: #{{ match.id }} // {{ match.date_played|date:"Y-m-d H:i" }}</div>
+                <h1 style="margin: 0; color: var(--blue);">{{ match.home_team.name }}</h1>
+            </div>
+            <div class="score-final">{{ match.home_score }} - {{ match.away_score }}</div>
+            <div style="text-align: right;">
+                <div class="match-id">MODE: {{ match.mode }}</div>
+                <h1 style="margin: 0; color: var(--red);">{{ match.away_team.name }}</h1>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h3>>> PERFORMANCE_METRICS</h3>
+            
+            <div class="stat-row">
+                <span style="color:var(--blue)">{{ stats.home_possession_pct }}%</span>
+                <span>POSSESSION</span>
+                <span style="color:var(--red)">{{ stats.away_possession_pct }}%</span>
+            </div>
+            <div class="bar-container">
+                <div class="bar-fill bar-home" style="width: {{ stats.home_possession_pct }}%"></div>
+                <div class="bar-fill bar-away" style="width: {{ stats.away_possession_pct }}%"></div>
+            </div>
+
+            <div class="stat-row">
+                <span style="color:var(--blue)">{{ stats.home_shots }} ({{ stats.home_on_target }})</span>
+                <span>SHOTS (ON TARGET)</span>
+                <span style="color:var(--red)">{{ stats.away_shots }} ({{ stats.away_on_target }})</span>
+            </div>
+            <div class="bar-container">
+                <div class="bar-fill bar-home" style="width: 50%"></div>
+                <div class="bar-fill bar-away" style="width: 50%"></div>
+            </div>
+
+            <div class="stat-row">
+                <span style="color:var(--blue)">{{ stats.home_integrity_final }}%</span>
+                <span>STRUCTURAL INTEGRITY</span>
+                <span style="color:var(--red)">{{ stats.away_integrity_final }}%</span>
+            </div>
+            <div class="bar-container">
+                <div class="bar-fill bar-home" style="width: {{ stats.home_integrity_final }}%"></div>
+                <div class="bar-fill bar-away" style="width: {{ stats.away_integrity_final }}%"></div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h3>>> CRITICAL_EVENTS</h3>
+            <div class="log-dump">
+                {% for line in logs %}
+                    {% if "GOAL" in line or "SAVE" in line or "Yellow Card" in line %}
+                        <div style="margin-bottom: 6px; color: #ccc;">{{ line }}</div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+
+        <a href="{% url 'tactical_lab' %}" class="btn-return">
+            << RETURN TO TACTICAL LAB // CONFIGURE NEW MATCH
+        </a>
+
+    </div>
+
+</body>
+</html>

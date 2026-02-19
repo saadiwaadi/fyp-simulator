@@ -1,81 +1,152 @@
-from django.shortcuts import render
-from .models import Team, Player
+from django.shortcuts import render, redirect, get_object_or_404
+from .models import Team, Player, Match
 from .simulation.engine import play_match
+from .simulation.analyst import generate_post_match_report  # <-- IMPORT THIS
 
-def match_dashboard(request):
-    # 1. SETUP DEFAULTS
+# --- PHASE 1: TACTICAL LAB (Configuration) ---
+# --- PHASE 1: TACTICAL LAB (Configuration) ---
+def tactical_lab(request):
     teams = Team.objects.all()
-    active_tab = 'tab-stats' # Default tab
     
-    # Try to keep the same team selected if we just reloaded the page
-    active_team_id = request.POST.get('edit_team_id')
+    # 1. INITIALIZE MEMORY BANK
+    if 'team_tactics' not in request.session:
+        request.session['team_tactics'] = {}
+
+    # The team you were just looking at before clicking submit/switch
+    submitted_team_id = request.session.get('last_active_team_id')
     
-    # If no team is selected (first load), pick the first one from DB
+    # The team you want to look at NOW
+    active_team_id = request.POST.get('edit_team_id') or submitted_team_id
+    
     if not active_team_id and teams.exists():
         active_team_id = teams.first().id
-    
-    # Safety convert to int
-    try:
-        active_team_id = int(active_team_id)
-    except (TypeError, ValueError):
-        active_team_id = None
+        
+    try: active_team_id = int(active_team_id)
+    except: active_team_id = None
 
-    log = []
-    stats = {}
-    
-    # 2. HANDLE ACTIONS
     if request.method == 'POST':
         
-        # --- SCENARIO A: SWITCHING TEAMS (Dropdown) ---
-        # The form just submits 'edit_team_id', we just need to catch it (done above) and switch tabs
-        if 'update_squad_view' in request.POST:
-            active_tab = 'tab-squad'
-
-        # --- SCENARIO B: SAVING THE SQUAD ---
-        elif 'update_squad_save' in request.POST:
-            active_tab = 'tab-squad'
-            
-            # Reset bench for this team
-            Player.objects.filter(team_id=active_team_id).update(is_starting=False)
-            
-            # Set new starters
-            selected_ids = request.POST.getlist('starting_players')
-            Player.objects.filter(id__in=selected_ids).update(is_starting=True)
-            
-            # Save Zones
-            # We fetch players again to ensure we iterate over the correct set
-            team_players = Player.objects.filter(team_id=active_team_id)
-            for p in team_players:
-                new_zone = request.POST.get(f'zone_{p.id}')
-                if new_zone:
-                    p.preferred_zone = new_zone
-                    p.save()
-
-        # --- SCENARIO C: EXECUTING MATCH ---
-        elif 'home_team' in request.POST:
-            active_tab = 'tab-stats' # Go to results
-            h_id = request.POST.get('home_team')
-            a_id = request.POST.get('away_team')
-            mode = request.POST.get('match_mode')
-            
-            # Run Engine
+        # --- HELPER: CLAMP SLIDERS ---
+        # Prevents HTML manipulation from submitting values outside 1-5
+        def clamp(val):
             try:
-                h = Team.objects.get(id=h_id)
-                a = Team.objects.get(id=a_id)
-                log, stats = play_match(h.name, a.name, mode=mode)
-            except Exception as e:
-                log = [f">> ERROR: {str(e)}"]
+                return max(1, min(5, int(val)))
+            except (ValueError, TypeError):
+                return 3 # Safe fallback
 
-    # 3. GET PLAYERS FOR THE ACTIVE TEAM
+        # 2. SAVE STATE FOR THE SUBMITTED TEAM
+        if submitted_team_id:
+            # Save Sliders (Now securely clamped)
+            tactics = request.session['team_tactics']
+            tactics[str(submitted_team_id)] = {
+                'tempo': clamp(request.POST.get('sys_tempo', 3)),
+                'width': clamp(request.POST.get('sys_width', 3)),
+                'depth': clamp(request.POST.get('sys_depth', 3)),
+                'press': clamp(request.POST.get('sys_press', 3)),
+                'risk':  clamp(request.POST.get('sys_risk', 3))
+            }
+            request.session.modified = True
+
+            # Save Players
+            current_mode = request.POST.get('match_mode', '5v5')
+            started_ids = request.POST.getlist('starting_players')
+            team_players = Player.objects.filter(team_id=submitted_team_id)
+            
+            for p in team_players:
+                p.tactical_instruction = request.POST.get(f'instruction_{p.id}', p.tactical_instruction)
+                p.set_piece_role = request.POST.get(f'set_piece_{p.id}', p.set_piece_role)
+                if str(p.id) in started_ids:
+                    p.is_starting = True
+                    slot_id = request.POST.get(f'slot_{p.id}', "Center")
+                    p.preferred_zone = str(slot_id) if slot_id else "Center"
+                    if current_mode == '5v5': p.slot_5v5 = p.preferred_zone
+                    else: p.slot_11v11 = p.preferred_zone
+                else:
+                    p.is_starting = False
+                    if not getattr(p, 'preferred_zone', None): p.preferred_zone = "Bench"
+                p.save()
+
+        # 3. EXECUTE MATCH
+        if 'execute_match' in request.POST:
+            import uuid # Used to generate a unique seed for this match
+            
+            request.session['match_config'] = {
+                'home_id': request.POST.get('home_team'),
+                'away_id': request.POST.get('away_team'),
+                'mode': request.POST.get('match_mode', '5v5'),
+                'match_seed': str(uuid.uuid4()) # Inject the unique seed here
+            }
+            return redirect('match_execution')
+
+    # 4. PREPARE UI FOR THE ACTIVE TEAM
+    request.session['last_active_team_id'] = active_team_id
+    
     current_players = Player.objects.filter(team_id=active_team_id) if active_team_id else []
+    
+    # Pull saved tactics for the screen to display
+    current_tactics = request.session.get('team_tactics', {}).get(str(active_team_id), {
+        'tempo': 3, 'width': 3, 'depth': 3, 'press': 3, 'risk': 3
+    })
 
     context = {
         'teams': teams,
-        'players': current_players, # This populates the table
-        'active_edit_team_id': active_team_id, # This tells the dropdown which team is selected
-        'active_tab': active_tab, # This tells JS which tab to open
-        'log': log,
-        'stats': stats
+        'players': current_players,
+        'active_edit_team_id': active_team_id,
+        'current_tactics': current_tactics, # <-- PASSED TO HTML
     }
+    return render(request, 'engine/lab.html', context)
+
+
+# --- PHASE 2: EXECUTION (The Engine Room) ---
+def match_execution(request):
+    config = request.session.get('match_config')
+    if not config: return redirect('tactical_lab')
+
+    h_team = Team.objects.get(id=config['home_id'])
+    a_team = Team.objects.get(id=config['away_id'])
+    mode = config['mode']
+
+    # CRITICAL FIX: Fetch BOTH sets of tactics from the memory bank
+    team_tactics = request.session.get('team_tactics', {})
+    h_team.sys_style = team_tactics.get(str(h_team.id), {'tempo':3, 'width':3, 'depth':3, 'press':3, 'risk':3})
+    a_team.sys_style = team_tactics.get(str(a_team.id), {'tempo':3, 'width':3, 'depth':3, 'press':3, 'risk':3})
+
+    h_players = list(Player.objects.filter(team=h_team, is_starting=True))
+    a_players = list(Player.objects.filter(team=a_team, is_starting=True))
+
+    if not h_players: h_players = list(Player.objects.filter(team=h_team))[:11]
+    if not a_players: a_players = list(Player.objects.filter(team=a_team))[:11]
+
+    logs, stats = play_match(h_team, a_team, h_players, a_players, mode=mode)
+
+    match = Match.objects.create(
+        home_team=h_team, away_team=a_team, mode=mode,
+        home_score=stats['home_score'], away_score=stats['away_score'],
+        stats=stats, logs=logs
+    )
+    request.session['last_match_id'] = match.id
+
+    return render(request, 'engine/match_live.html', {
+        'match': match, 'logs': logs, 'stats': stats,
+    })
+
+# --- PHASE 3: DEEP SCAN (Analysis) ---
+def match_analysis(request, match_id=None):
+    # If no ID provided, try to get the last played match
+    if not match_id:
+        match_id = request.session.get('last_match_id')
     
-    return render(request, 'engine/dashboard.html', context)
+    if not match_id:
+        return redirect('tactical_lab')
+
+    match = get_object_or_404(Match, id=match_id)
+    
+    # --- RUN THE ANALYST ---
+    # This generates the "Story" (Causality, Evaluation, Outcome Type)
+    analysis = generate_post_match_report(match.stats, match.home_team.name, match.away_team.name)
+
+    return render(request, 'engine/match_report.html', {
+        'match_state': match, # Contains score, team names
+        'stats': match.stats, # Contains raw numbers
+        'analysis': analysis  # Contains the intelligent text
+    })

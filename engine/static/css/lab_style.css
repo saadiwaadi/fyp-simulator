@@ -1,0 +1,178 @@
+/* AESTHETIC: Dark & Clean */
+:root { 
+    --bg: #050505; --panel: #0b0b0b; --border: #222; 
+    --text: #888; --text-light: #eee; 
+    --neon-blue: #00ccff; --neon-green: #00ff41; --neon-red: #ff3333;
+}
+body { background: var(--bg); color: var(--text); font-family: 'Courier New', monospace; margin: 0; height: 100vh; overflow: hidden; }
+<style>
+
+        /* --- NEW: TRAIT BADGES --- */
+        .trait-container { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+        .trait-badge {
+            font-size: 10px; padding: 4px 8px; background: #1a1a1a; 
+            border: 1px solid #333; color: #555; border-radius: 4px;
+            display: flex; align-items: center; gap: 5px; opacity: 0.5;
+            transition: all 0.3s;
+        }
+        
+        /* Elite Traits (Glow) */
+        .trait-badge.active { 
+            opacity: 1; border-color: var(--neon-blue); color: #fff; 
+            box-shadow: 0 0 8px rgba(0, 204, 255, 0.2); 
+        }
+        .trait-badge.gold { 
+            border-color: #ffd700; color: #ffd700; 
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.3); 
+        }
+
+        /* Tactical Fit Meter */
+        .fit-meter-container { 
+            background: #111; padding: 10px; border: 1px solid #333; margin-top: 15px; 
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .fit-score { font-size: 24px; font-weight: bold; color: #555; }
+        .fit-label { font-size: 10px; color: #888; }
+        
+        /* Fit Colors */
+        .fit-high { color: var(--neon-green); text-shadow: 0 0 10px var(--neon-green); }
+        .fit-med { color: orange; }
+        .fit-low { color: var(--neon-red); }
+
+
+        /* --- CORE AESTHETIC --- */
+        :root { 
+            --bg: #050505; --panel: #0b0b0b; --border: #222; 
+            --text: #888; --text-light: #eee; 
+            --neon-blue: #00ccff; --neon-green: #00ff41; --neon-red: #ff3333;
+        }
+        body { background: var(--bg); color: var(--text); font-family: 'Courier New', monospace; margin: 0; height: 100vh; overflow: hidden; }
+
+        /* --- LAYOUT GRID --- */
+        .app-container {
+            display: grid;
+            grid-template-columns: 1fr 350px; /* Pitch | Console */
+            grid-template-rows: 60px 1fr 140px; /* Header | Pitch | Bench */
+            height: 100vh;
+        }
+
+        /* 1. HEADER */
+        .top-bar {
+            grid-column: 1 / 3; grid-row: 1 / 2;
+            background: var(--panel); border-bottom: 1px solid var(--border);
+            display: flex; justify-content: space-between; align-items: center; padding: 0 20px;
+        }
+        .mode-switch { background: #000; color: #fff; border: 1px solid #333; padding: 5px 15px; cursor: pointer; }
+        .btn-exe { background: #000; color: var(--neon-green); border: 1px solid var(--neon-green); padding: 8px 20px; font-weight: bold; cursor: pointer; text-transform: uppercase; }
+        .btn-exe:hover { background: var(--neon-green); color: #000; box-shadow: 0 0 15px var(--neon-green); }
+
+        /* 2. THE PITCH (Formation Board) */
+        .pitch-container {
+            grid-column: 1 / 2; grid-row: 2 / 3;
+            background: 
+                linear-gradient(rgba(0,0,0,0.8), rgba(0,0,0,0.8)),
+                /* Zone Markers */
+                linear-gradient(to bottom, transparent 33%, #222 33%, #222 34%, transparent 34%),
+                linear-gradient(to bottom, transparent 66%, #222 66%, #222 67%, transparent 67%),
+                repeating-linear-gradient(90deg, transparent, transparent 49px, #111 50px);
+            position: relative;
+            border-right: 1px solid var(--border);
+        }
+        
+        /* Zone Labels */
+        .zone-label { position: absolute; left: 10px; font-size: 10px; color: #333; font-weight: bold; letter-spacing: 2px; }
+        .z-att { top: 15%; } .z-mid { top: 50%; } .z-def { top: 85%; }
+
+        /* POSITIONAL SLOTS */
+        .slot {
+            width: 60px; height: 60px; border: 2px dashed #333; border-radius: 50%;
+            position: absolute; transform: translate(-50%, -50%);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            transition: all 0.3s; z-index: 1;
+        }
+        .slot.drag-over { border-color: var(--neon-green); box-shadow: 0 0 20px rgba(0, 255, 65, 0.2); }
+        .slot-name { font-size: 9px; color: #555; margin-top: 65px; position: absolute; width: 100px; text-align: center; pointer-events: none; }
+        
+        /* 11v11 POSITIONS (4-3-3 Standard) */
+        .mode-11v11 #pos-GK  { top: 92%; left: 50%; }
+        .mode-11v11 #pos-LB  { top: 82%; left: 10%; }
+        .mode-11v11 #pos-LCB { top: 86%; left: 35%; }
+        .mode-11v11 #pos-RCB { top: 86%; left: 65%; }
+        .mode-11v11 #pos-RB  { top: 82%; left: 90%; }
+        .mode-11v11 #pos-CDM { top: 68%; left: 50%; }
+        .mode-11v11 #pos-LCM { top: 52%; left: 30%; }
+        .mode-11v11 #pos-RCM { top: 52%; left: 70%; }
+        .mode-11v11 #pos-LW  { top: 25%; left: 15%; }
+        .mode-11v11 #pos-ST  { top: 18%; left: 50%; }
+        .mode-11v11 #pos-RW  { top: 25%; left: 85%; }
+        .mode-11v11 .slot-5 { display: none; } /* Hide 5v5 slots */
+
+        /* 5v5 POSITIONS */
+        .mode-5v5 #pos-GK-5 { top: 90%; left: 50%; }
+        .mode-5v5 #pos-DL-5 { top: 70%; left: 30%; }
+        .mode-5v5 #pos-DR-5 { top: 70%; left: 70%; }
+        .mode-5v5 #pos-MID-5 { top: 45%; left: 50%; }
+        .mode-5v5 #pos-FWD-5 { top: 20%; left: 50%; }
+        .mode-5v5 .slot-11 { display: none; } /* Hide 11v11 slots */
+
+        /* 3. PLAYER CONSOLE (Right Panel) */
+        .console {
+            grid-column: 2 / 3; grid-row: 2 / 4; /* Spans down to bottom */
+            background: var(--panel); border-left: 1px solid var(--border);
+            padding: 20px; display: flex; flex-direction: column;
+        }
+        
+        /* Console Header */
+        .p-header { border-bottom: 1px solid #333; padding-bottom: 15px; margin-bottom: 15px; }
+        .p-title { font-size: 18px; color: #fff; font-weight: bold; }
+        .p-subtitle { font-size: 12px; color: var(--neon-blue); }
+
+        /* Console Tabs */
+        .tab-group { display: flex; gap: 5px; margin-bottom: 20px; background: #000; padding: 3px; border-radius: 4px; }
+        .tab { flex: 1; text-align: center; padding: 8px; font-size: 11px; cursor: pointer; color: #555; }
+        .tab.active { background: #222; color: var(--text-light); border-bottom: 2px solid var(--neon-blue); }
+
+        /* Console Views */
+        .view-section { display: none; animation: fadeIn 0.3s; }
+        .view-section.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* Stats Bars */
+        .stat-row { display: flex; justify-content: space-between; font-size: 10px; margin-bottom: 5px; }
+        .bar-bg { width: 100%; height: 4px; background: #222; margin-bottom: 10px; }
+        .bar-fill { height: 100%; background: var(--neon-blue); width: 0%; transition: width 0.5s; }
+
+        /* Tactics Dropdowns */
+        .tac-label { font-size: 10px; color: var(--neon-green); margin-bottom: 5px; display: block; margin-top: 15px; }
+        .tac-select { width: 100%; background: #111; color: #fff; border: 1px solid #333; padding: 10px; font-family: 'Courier New'; }
+        
+        /* 4. BENCH (Bottom) */
+        .bench {
+            grid-column: 1 / 2; grid-row: 3 / 4;
+            background: #080808; border-top: 1px solid var(--border);
+            padding: 10px; overflow-x: auto; display: flex; align-items: center; gap: 10px;
+        }
+        
+        /* Draggable Card */
+        .card {
+            width: 70px; height: 90px; background: #111; border: 1px solid #333;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            cursor: grab; position: relative;
+        }
+        .card:hover { border-color: var(--neon-blue); }
+        .card-role { font-size: 14px; font-weight: bold; color: #666; }
+        .card-name { font-size: 10px; color: #ccc; margin-top: 5px; text-align: center; }
+        
+        /* When On Pitch */
+        .card.deployed {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 100%; height: 100%; background: transparent; border: none; z-index: 10;
+        }
+        .card.deployed .card-role { color: var(--neon-green); font-size: 18px; }
+        .card.deployed .card-name { display: none; } /* Name is shown by slot label */
+        
+        /* Tiny Stamina Bar on Card */
+        .tiny-sta { width: 40px; height: 2px; background: #333; margin-top: 5px; }
+        .tiny-sta-fill { height: 100%; background: var(--neon-green); width: 80%; }
+
+    </style>

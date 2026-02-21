@@ -73,12 +73,20 @@ def play_match(home_team, away_team, h_players, a_players, mode="5v5", sys_style
     # ====================================================
     # 3. MATCH LOOP
     # ====================================================
-    # 1. Define the match length based on the mode
+    # ==========================================
+    # --- CORE MATCH LOOP ---
+    # ==========================================
+    
+    # FIX: Dynamically set match length based on the game mode
     max_minutes = 40 if mode == '5v5' else 90
 
-    # 2. Run the loop using max_minutes
+    # Start the simulation timer
     for minute in range(1, max_minutes + 1):
-        # ... the rest of your minute-by-minute simulation logic ...
+        
+        # 1. Apply Fatigue (Drains faster in 5v5 because they run more!)
+        fatigue_drain = 2 if mode == '5v5' else 1
+        
+      
 
         # --- RESTORED: FORENSICS & TIMELINE ---
         avg_h_stam = sum(p.current_stamina for p in team_home) / len(team_home)

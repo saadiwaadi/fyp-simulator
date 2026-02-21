@@ -4,6 +4,14 @@
 <head>
     <title>SIMULATION_EXECUTION // {{ match.id }}</title>
     <link rel="stylesheet" href="{% static 'css/match_style.css' %}">
+    <style>
+        /* Quick Inline Styles for Dynamic Gauges */
+        .load-safe { background: var(--neon-blue) !important; box-shadow: 0 0 10px rgba(0,204,255,0.4); }
+        .load-warn { background: orange !important; box-shadow: 0 0 10px rgba(255,165,0,0.4); }
+        .load-crit { background: var(--neon-red) !important; box-shadow: 0 0 10px rgba(255,51,51,0.4); }
+        .goal-flash { animation: flash-green 0.5s ease-out; }
+        @keyframes flash-green { 0% { color: var(--neon-green); text-shadow: 0 0 20px var(--neon-green); transform: scale(1.5); } 100% { color: var(--text-light); transform: scale(1); } }
+    </style>
 </head>
 <body>
 
@@ -51,7 +59,7 @@
 
             <div class="panel-title">>> MOMENTUM GRAPH</div>
             <div class="momentum-box">
-                <div id="momentum-indicator" class="momentum-bar"></div>
+                <div id="momentum-indicator" class="momentum-bar" style="width: 50%; background: linear-gradient(90deg, var(--neon-blue), var(--neon-red));"></div>
             </div>
         </div>
 
@@ -79,15 +87,21 @@
             <div class="panel-title">>> SYSTEM LOADS</div>
             <div class="load-gauge">
                 <div class="load-label">TEMPO LOAD</div>
-                <div class="load-bar-bg"><div class="load-bar" id="load-tempo" style="width: 50%;"></div></div>
+                <div class="load-bar-bg">
+                    <div class="load-bar {% if stats.h_tempo >= 4 %}load-crit{% elif stats.h_tempo == 3 %}load-warn{% else %}load-safe{% endif %}" id="load-tempo" style="width: {% widthratio stats.h_tempo|default:3 5 100 %}%;"></div>
+                </div>
             </div>
             <div class="load-gauge">
                 <div class="load-label">PRESS INTENSITY</div>
-                <div class="load-bar-bg"><div class="load-bar" id="load-press" style="width: 50%;"></div></div>
+                <div class="load-bar-bg">
+                    <div class="load-bar {% if stats.h_press >= 4 %}load-crit{% elif stats.h_press == 3 %}load-warn{% else %}load-safe{% endif %}" id="load-press" style="width: {% widthratio stats.h_press|default:3 5 100 %}%;"></div>
+                </div>
             </div>
             <div class="load-gauge">
                 <div class="load-label">RISK EXPOSURE</div>
-                <div class="load-bar-bg"><div class="load-bar" id="load-risk" style="width: 50%;"></div></div>
+                <div class="load-bar-bg">
+                    <div class="load-bar {% if stats.h_risk >= 4 %}load-crit{% elif stats.h_risk == 3 %}load-warn{% else %}load-safe{% endif %}" id="load-risk" style="width: {% widthratio stats.h_risk|default:3 5 100 %}%;"></div>
+                </div>
             </div>
 
             <div class="panel-divider"></div>
@@ -119,25 +133,26 @@
             <button onclick="skipSim()">⏩ SKIP</button>
             
             <a href="{% url 'tactical_report' %}" class="btn-return" id="btn-return" style="display:none;">VIEW ANALYSIS >></a>
+            
         </div>
     </div>
 
     {{ logs|json_script:"match-logs-data" }}
 
     <script>
-        // Context for the gauges (Passed from Engine)
+        // Ensure we handle missing stats gracefully so JS doesn't crash
         window.matchContext = {
-            tempo: {{ stats.sys_tempo|default:3 }},
-            press: {{ stats.sys_press|default:3 }},
-            risk:  {{ stats.sys_risk|default:3 }}
+            tempo: {{ stats.h_tempo|default:3 }},
+            press: {{ stats.h_press|default:3 }},
+            risk:  {{ stats.h_risk|default:3 }}
         };
 
         window.finalStats = {
-            h_score: {{ match.home_score }},
-            a_score: {{ match.away_score }},
-            h_poss: {{ stats.home_possession_pct }},
-            h_struct: {{ stats.home_integrity_final }},
-            a_struct: {{ stats.away_integrity_final }}
+            h_score: {{ match.home_score|default:0 }},
+            a_score: {{ match.away_score|default:0 }},
+            h_poss: {{ stats.home_possession_pct|default:50 }},
+            h_struct: {{ stats.home_integrity_final|default:100 }},
+            a_struct: {{ stats.away_integrity_final|default:100 }}
         };
     </script>
     <script src="{% static 'js/match_player.js' %}"></script>

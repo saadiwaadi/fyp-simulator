@@ -73,7 +73,12 @@ def play_match(home_team, away_team, h_players, a_players, mode="5v5", sys_style
     # ====================================================
     # 3. MATCH LOOP
     # ====================================================
-    for minute in range(1, 91, 3):
+    # 1. Define the match length based on the mode
+    max_minutes = 40 if mode == '5v5' else 90
+
+    # 2. Run the loop using max_minutes
+    for minute in range(1, max_minutes + 1):
+        # ... the rest of your minute-by-minute simulation logic ...
 
         # --- RESTORED: FORENSICS & TIMELINE ---
         avg_h_stam = sum(p.current_stamina for p in team_home) / len(team_home)

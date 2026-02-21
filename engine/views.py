@@ -67,14 +67,26 @@ def tactical_lab(request):
                 p.save()
 
         # 3. EXECUTE MATCH
+        # 3. EXECUTE MATCH
         if 'execute_match' in request.POST:
-            import uuid # Used to generate a unique seed for this match
+            import uuid
             
+            # THE FIX: Explicitly grab what the UI sent in the POST request
+            home_id = request.POST.get('home_team')
+            away_id = request.POST.get('away_team')
+            mode = request.POST.get('match_mode', '5v5')
+
+            # Validation: Ensure we actually have IDs
+            if not home_id or not away_id:
+                # Fallback to defaults if something went wrong in the POST
+                home_id = Team.objects.first().id
+                away_id = Team.objects.last().id
+
             request.session['match_config'] = {
-                'home_id': request.POST.get('home_team'),
-                'away_id': request.POST.get('away_team'),
-                'mode': request.POST.get('match_mode', '5v5'),
-                'match_seed': str(uuid.uuid4()) # Inject the unique seed here
+                'home_id': home_id,
+                'away_id': away_id,
+                'mode': mode,
+                'match_seed': str(uuid.uuid4())
             }
             return redirect('match_execution')
 
@@ -117,8 +129,12 @@ def match_execution(request):
     if not h_players: h_players = list(Player.objects.filter(team=h_team))[:11]
     if not a_players: a_players = list(Player.objects.filter(team=a_team))[:11]
 
-    logs, stats = play_match(h_team, a_team, h_players, a_players, mode=mode)
+    # FIX: Extract the seed from the config
+    current_seed = config.get('match_seed') 
 
+    # FIX: Pass the seed AND the home tactics directly into the engine
+    logs, stats = play_match(h_team, a_team, h_players, a_players, mode=mode, sys_style=h_team.sys_style, match_seed=current_seed)
+    
     match = Match.objects.create(
         home_team=h_team, away_team=a_team, mode=mode,
         home_score=stats['home_score'], away_score=stats['away_score'],

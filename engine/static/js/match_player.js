@@ -1,222 +1,158 @@
-// CONFIG
-let playbackSpeed = 800;
+// --- STATE TRACKERS ---
+let logsData = [];
 let currentIndex = 0;
-let intervalId = null;
+let speed = 800;
 let isPaused = false;
+let simInterval;
 
-// STATE
-let homeScore = 0, awayScore = 0;
-let homeShots = 0, awayShots = 0;
-let homeStruct = 100, awayStruct = 100;
-let breaks = 0;
+let currentHomeScore = 0;
+let currentAwayScore = 0;
+let homeIntegrity = 100;
+let awayIntegrity = 100;
+let totalBreaks = 0;
 
-// MOCK FATIGUE DATA (To be replaced by real engine data later)
-let fatigueRoster = [
-    { name: "DM - Anchor", val: 95 },
-    { name: "FWD - Presser", val: 92 },
-    { name: "WB - Runner", val: 90 }
-];
-
-function init() {
-    // 1. Get Safely Passed Logs from HTML
-    const logData = document.getElementById('match-logs-data');
-    if (logData) {
-        window.matchLogs = JSON.parse(logData.textContent);
-    } else {
-        window.matchLogs = []; // Safety fallback
+document.addEventListener("DOMContentLoaded", () => {
+    // 1. Load the data passed from Django
+    const rawData = document.getElementById('match-logs-data');
+    if (rawData) {
+        logsData = JSON.parse(rawData.textContent);
+        playLoop();
     }
+});
 
-    // 2. Set System Loads from Context
-    const ctx = window.matchContext || { tempo:3, press:3, risk:3 };
-    document.getElementById('load-tempo').style.width = (ctx.tempo * 20) + "%";
-    document.getElementById('load-press').style.width = (ctx.press * 20) + "%";
-    document.getElementById('load-risk').style.width  = (ctx.risk * 20) + "%";
-    
-    // 3. Start
-    startSimulation();
+// --- MAIN PLAYBACK LOOP ---
+function playLoop() {
+    clearInterval(simInterval);
+    simInterval = setInterval(() => {
+        if (isPaused) return;
+        
+        if (currentIndex >= logsData.length) {
+            finalizeSim();
+            return;
+        }
+        
+        processLogLine(logsData[currentIndex]);
+        currentIndex++;
+    }, speed);
 }
 
-function startSimulation() {
-    if (intervalId) clearInterval(intervalId);
-    intervalId = setInterval(processNextLog, playbackSpeed);
-    document.getElementById('status-msg').innerText = "SIMULATION RUNNING...";
-    document.getElementById('status-msg').classList.add('blink');
-}
+// --- THE PARSER (Reads the text and updates the UI) ---
+function processLogLine(line) {
+    const terminalFeed = document.getElementById('terminal-feed');
 
-function togglePause() {
-    const btn = document.getElementById('btn-pause');
-    if (isPaused) {
-        isPaused = false;
-        startSimulation();
-        btn.innerText = "⏸ PAUSE";
-        btn.style.color = "#ccc";
-    } else {
-        isPaused = true;
-        clearInterval(intervalId);
-        document.getElementById('status-msg').innerText = "SIMULATION PAUSED";
-        document.getElementById('status-msg').classList.remove('blink');
-        btn.innerText = "▶ RESUME";
-        btn.style.color = "var(--accent)";
-    }
-}
-
-function processNextLog() {
-    if (currentIndex >= window.matchLogs.length) {
-        finishSimulation();
-        return;
-    }
-
-    const log = window.matchLogs[currentIndex];
-    const terminal = document.getElementById('terminal-feed');
-    
-    // 1. Create Row
-    const row = document.createElement('div');
-    row.className = 'log-entry';
-    
-    // Parse Time
-    let minute = "00'";
-    let content = log;
-    const timeMatch = log.match(/^(\d+)'/);
+    // 1. Parse Minute
+    let timeMatch = line.match(/^(\d+)'/);
     if (timeMatch) {
-        minute = timeMatch[0];
-        content = log.replace(timeMatch[0], "").trim();
-        document.getElementById('sim-minute').innerText = minute;
-        
-        // Every 5 minutes, degrade fatigue
-        if (parseInt(timeMatch[1]) % 5 === 0) simulateFatigue();
+        document.getElementById('sim-minute').innerText = timeMatch[1] + "'";
     }
 
-    // 2. Identify Context
-    const homeName = document.querySelector('.team-box.home .team-name').innerText;
-    const isHomeEvent = content.includes(homeName);
-
-    // 3. Logic & Style
-    if (content.includes("GOAL")) {
-        row.classList.add('log-goal');
-        updateScore(content, homeName);
-        triggerMomentum(isHomeEvent);
-    } 
-    else if (content.includes("SAVE")) {
-        row.classList.add('log-save');
-        updateShots(content, homeName);
-    }
-    else if (content.includes("MISS")) {
-        row.style.color = "#888"; 
-        updateShots(content, homeName); 
-    }
-    else if (content.includes("TACTIC") || content.includes("PHASE")) {
-        row.classList.add('log-tactic');
-        updateStructure(isHomeEvent);
-        triggerMomentum(isHomeEvent);
-        breaks++;
-        document.getElementById('live-breaks').innerText = breaks;
-    }
-    else if (content.includes("TURNOVER")) {
-        row.classList.add('log-turnover');
-    }
-    else if (content.includes("FOUL")) {
-        row.classList.add('log-foul');
+    // 2. Parse Goals & Score
+    if (line.includes('[GOAL]')) {
+        let scoreMatch = line.match(/\((\d+)\s*-\s*(\d+)\)/);
+        if (scoreMatch) {
+            currentHomeScore = parseInt(scoreMatch[1]);
+            currentAwayScore = parseInt(scoreMatch[2]);
+            
+            document.getElementById('score-home').innerText = currentHomeScore;
+            document.getElementById('score-away').innerText = currentAwayScore;
+            
+            // Flash effect
+            document.getElementById('score-home').classList.add('goal-flash');
+            setTimeout(() => document.getElementById('score-home').classList.remove('goal-flash'), 500);
+            
+            // Update Shots (Approximate based on goals for live feed)
+            document.getElementById('live-sh-h').innerText = currentHomeScore;
+            document.getElementById('live-sh-a').innerText = currentAwayScore;
+        }
     }
 
-    // 4. Inject into UI
-    row.innerHTML = `<span class="log-time" style="color:#555; display:inline-block; width:30px;">${minute}</span><span class="log-text">${content}</span>`;
-    terminal.appendChild(row);
-    terminal.scrollTop = terminal.scrollHeight;
-
-    currentIndex++;
-}
-
-// --- UPDATERS ---
-function updateScore(log, homeName) {
-    if (log.includes(homeName)) {
-        homeScore++; document.getElementById('score-home').innerText = homeScore; homeShots++;
-    } else {
-        awayScore++; document.getElementById('score-away').innerText = awayScore; awayShots++;
+    // 3. Parse Structural Integrity Damage
+    let homeDmgMatch = line.match(/Home Integrity\s*(-?\d+\.?\d*)%/);
+    if (homeDmgMatch) {
+        homeIntegrity += parseFloat(homeDmgMatch[1]); // It's negative, so we add it to subtract
+        updateIntegrityBar('home', homeIntegrity);
     }
-    updateShotsUI();
-}
 
-function updateShots(log, homeName) {
-    if (log.includes(homeName)) homeShots++; else awayShots++;
-    updateShotsUI();
-}
-
-function updateShotsUI() {
-    document.getElementById('live-sh-h').innerText = homeShots;
-    document.getElementById('live-sh-a').innerText = awayShots;
-}
-
-function updateStructure(isHomeAttacking) {
-    if (isHomeAttacking) {
-        awayStruct = Math.max(awayStruct - (Math.random() * 3), 10);
-        document.getElementById('val-away-struct').innerText = Math.round(awayStruct) + "%";
-        document.getElementById('bar-away-struct').style.width = awayStruct + "%";
-    } else {
-        homeStruct = Math.max(homeStruct - (Math.random() * 3), 10);
-        document.getElementById('val-home-struct').innerText = Math.round(homeStruct) + "%";
-        document.getElementById('bar-home-struct').style.width = homeStruct + "%";
+    let awayDmgMatch = line.match(/Away Integrity\s*(-?\d+\.?\d*)%/);
+    if (awayDmgMatch) {
+        awayIntegrity += parseFloat(awayDmgMatch[1]);
+        updateIntegrityBar('away', awayIntegrity);
     }
-}
 
-function simulateFatigue() {
-    const list = document.getElementById('fatigue-list');
-    if (!list) return; // Guard clause
-    list.innerHTML = "";
+    // 4. Parse Tactical Breaks
+    if (line.includes('[TACTIC]')) {
+        totalBreaks++;
+        document.getElementById('live-breaks').innerText = totalBreaks;
+    }
+
+    // 5. Print to Terminal with Colors
+    let p = document.createElement('div');
+    p.className = 'log-line';
+    p.innerText = line;
     
-    fatigueRoster.forEach(p => {
-        p.val -= (Math.random() * 2); 
-        let colorClass = p.val < 50 ? "color:#ff3333" : "color:#aaa";
-        
-        let item = document.createElement('div');
-        item.className = 'fatigue-item';
-        item.innerHTML = `<span class="f-name">${p.name}</span><span class="f-val" style="${colorClass}">${Math.round(p.val)}%</span>`;
-        list.appendChild(item);
-    });
+    if (line.includes('[GOAL]')) p.style.color = 'var(--neon-green)';
+    else if (line.includes('[TACTIC]')) p.style.color = 'var(--neon-blue)';
+    else if (line.includes('[TURNOVER]')) p.style.color = 'orange';
+    else if (line.includes('Integrity')) p.style.color = 'var(--neon-red)';
+    else p.style.color = 'var(--text)';
+    
+    terminalFeed.appendChild(p);
+    terminalFeed.scrollTop = terminalFeed.scrollHeight; // Auto-scroll
 }
 
-function triggerMomentum(isHome) {
-    const bar = document.getElementById('momentum-indicator');
-    if (!bar) return;
-    bar.style.left = isHome ? '30%' : '70%';
-    setTimeout(() => { bar.style.left = '50%'; }, 600);
+// --- HELPER FUNCTIONS ---
+function updateIntegrityBar(side, value) {
+    // Clamp value between 0 and 100
+    let pct = Math.max(0, Math.min(100, value));
+    let bar = document.getElementById(`bar-${side}-struct`);
+    let valText = document.getElementById(`val-${side}-struct`);
+    
+    if (bar && valText) {
+        bar.style.width = pct + '%';
+        valText.innerText = Math.round(pct) + '%';
+        
+        // Change color to red if critical
+        if (pct < 30) bar.style.background = 'var(--neon-red)';
+        else if (pct < 60) bar.style.background = 'orange';
+    }
 }
 
 // --- CONTROLS ---
-function setSpeed(ms) {
-    playbackSpeed = ms;
-    if (!isPaused) startSimulation();
-}
+window.togglePause = function() {
+    isPaused = !isPaused;
+    document.getElementById('btn-pause').innerText = isPaused ? "▶ RESUME" : "⏸ PAUSE";
+    document.getElementById('status-msg').innerText = isPaused ? "SIMULATION PAUSED" : "SIMULATION RUNNING...";
+};
 
-function skipSim() {
-    playbackSpeed = 5;
-    if (!isPaused) startSimulation();
-}
+window.setSpeed = function(newSpeed) {
+    speed = newSpeed;
+    if (!isPaused) playLoop(); // Restart interval with new speed
+};
 
-function finishSimulation() {
-    clearInterval(intervalId);
+window.skipSim = function() {
+    isPaused = true;
+    clearInterval(simInterval);
+    
+    // Instantly process all remaining logs silently to get final math
+    while (currentIndex < logsData.length) {
+        processLogLine(logsData[currentIndex]);
+        currentIndex++;
+    }
+    finalizeSim();
+};
+
+function finalizeSim() {
+    clearInterval(simInterval);
     document.getElementById('status-msg').innerText = "SIMULATION COMPLETE";
-    document.getElementById('status-msg').classList.remove('blink');
-    document.getElementById('status-msg').style.color = "#fff";
+    document.getElementById('status-msg').style.color = "var(--neon-green)";
+    document.getElementById('btn-return').style.display = "inline-block";
     
-    const btnReturn = document.getElementById('btn-return');
-    if(btnReturn) btnReturn.style.display = 'inline-block';
-    
-    const btnPause = document.getElementById('btn-pause');
-    if(btnPause) btnPause.style.display = 'none';
-
-    // Completing the chopped-off block!
+    // Force final exact stats from the backend just to be safe
     if (window.finalStats) {
         document.getElementById('score-home').innerText = window.finalStats.h_score;
         document.getElementById('score-away').innerText = window.finalStats.a_score;
+        updateIntegrityBar('home', window.finalStats.h_struct);
+        updateIntegrityBar('away', window.finalStats.a_struct);
         document.getElementById('live-poss').innerText = window.finalStats.h_poss + "%";
-        
-        document.getElementById('val-home-struct').innerText = window.finalStats.h_struct + "%";
-        document.getElementById('bar-home-struct').style.width = window.finalStats.h_struct + "%";
-        
-        document.getElementById('val-away-struct').innerText = window.finalStats.a_struct + "%";
-        document.getElementById('bar-away-struct').style.width = window.finalStats.a_struct + "%";
     }
 }
-
-// 🔥 IGNITION SWITCH: Start the engine when the file loads!
-window.onload = init;

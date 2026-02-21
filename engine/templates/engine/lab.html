@@ -126,15 +126,32 @@
     <div class="app-container">
         <div class="top-bar">
             <div style="font-weight:bold;">>> TACTICAL LAB // V4</div>
-            <div style="display:flex; gap:10px;">
-                <select class="mode-switch" id="mode-selector" onchange="changeMode(this.value)">
-                    <option value="5v5">PROTOCOL: 5v5</option>
-                    <option value="11v11">PROTOCOL: 11v11</option>
-                </select>
+            
+            <div style="display:flex; gap:10px; align-items: center;">
+                <span style="font-size: 10px; color: #888;">EDITING:</span>
                 <select class="mode-switch" onchange="switchTeam(this.value)">
                     {% for t in teams %}
                         <option value="{{ t.id }}" {% if t.id == active_edit_team_id %}selected{% endif %}>{{ t.name }}</option>
                     {% endfor %}
+                </select>
+
+                <span style="font-size: 10px; color: #888; margin-left: 20px;">HOME:</span>
+                <select class="mode-switch" id="ui_home_team">
+                    {% for t in teams %}
+                        <option value="{{ t.id }}" {% if t.id == active_edit_team_id %}selected{% endif %}>{{ t.name }}</option>
+                    {% endfor %}
+                </select>
+                
+                <span style="font-size: 10px; color: #888;">AWAY:</span>
+                <select class="mode-switch" id="ui_away_team">
+                    {% for t in teams %}
+                        <option value="{{ t.id }}">{{ t.name }}</option>
+                    {% endfor %}
+                </select>
+
+                <select class="mode-switch" id="mode-selector" onchange="changeMode(this.value)">
+                    <option value="5v5">PROTOCOL: 5v5</option>
+                    <option value="11v11">PROTOCOL: 11v11</option>
                 </select>
             </div>
             <button class="btn-exe" onclick="executeMission()">EXECUTE MATCH >></button>
@@ -266,14 +283,13 @@
         </div>
     </div>
 
-    <form method="post" id="exe-form" style="display:none;">
+    <form id="exe-form" method="POST" action="{% url 'tactical_lab' %}" style="display:none;">
         {% csrf_token %}
         <input type="hidden" name="match_mode" id="form-mode" value="5v5">
-        <input type="hidden" name="home_team" value="{{ active_edit_team_id }}">
-        <input type="hidden" name="away_team" id="form-away" value="">
         <div id="form-data"></div>
     </form>
 
+    
     <script>
         // --- 0. DATA & CONFIG ---
         const TACTICAL_MENUS = {
@@ -505,26 +521,58 @@
             addHidden(container, 'sys_risk',  document.querySelector('input[name="sys_risk"]').value);
         }
 
-        function switchTeam(newTeamId) {
+        // ... (your other functions like buildFormPayload are up here) ...
+
+        // 1. THE NEW ASYNC SWITCH TEAM FUNCTION
+        // 1. THE NEW ASYNC SWITCH TEAM FUNCTION
+        async function switchTeam(newTeamId) {
             document.getElementById('loader').style.display = 'flex';
             let form = document.getElementById('exe-form');
             
-            // Remove the 'execute_match' flag so the backend knows we are just switching, not playing
             let execFlag = form.querySelector('input[name="execute_match"]');
             if(execFlag) execFlag.remove();
 
             addHidden(form, 'edit_team_id', newTeamId);
             buildFormPayload(document.getElementById('form-data'));
-            setTimeout(() => { form.submit(); }, 50);
+
+            let formData = new FormData(form);
+            
+            try {
+                let response = await fetch(window.location.href, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                let htmlText = await response.text();
+                let parser = new DOMParser();
+                let doc = parser.parseFromString(htmlText, 'text/html');
+
+                // Surgically swap out ONLY the pitch, bench, and sliders
+                document.getElementById('pitch').innerHTML = doc.getElementById('pitch').innerHTML;
+                document.getElementById('bench').innerHTML = doc.getElementById('bench').innerHTML;
+                document.getElementById('panel-system').innerHTML = doc.getElementById('panel-system').innerHTML;
+
+                document.getElementById('player-controls').style.display = 'none';
+                document.getElementById('player-placeholder').style.display = 'block';
+
+                applyLayout();
+
+            } catch (error) {
+                console.error("AJAX Error:", error);
+                form.submit(); 
+            } finally {
+                document.getElementById('loader').style.display = 'none';
+            }
         }
 
+        // 2. FULL EXECUTE MISSION FUNCTION
         function executeMission() {
             let mode = document.getElementById('form-mode').value;
             let req = (mode === '5v5') ? 5 : 11;
             let cards = document.querySelectorAll('.card.deployed');
 
             if(cards.length < req) { 
-                alert(`SQUAD UNDERSTRENGTH. ${mode} REQUIRES ${req}.`); 
+                alert(`SQUAD UNDERSTRENGTH. ${mode} REQUIRES ${req} PLAYERS.`); 
                 return; 
             }
 
@@ -536,34 +584,46 @@
                 addHidden(form, 'execute_match', 'true');
             }
 
-            {% for t in teams %}
-                if("{{ t.id }}" != "{{ active_edit_team_id }}") document.getElementById('form-away').value = "{{ t.id }}";
-            {% endfor %}
+            // Grab the Home and Away teams from the new UI dropdowns
+            let selectedHome = document.getElementById('ui_home_team').value;
+            let selectedAway = document.getElementById('ui_away_team').value;
+            
+            // Inject them into the hidden form
+            addHidden(form, 'home_team', selectedHome);
+            addHidden(form, 'away_team', selectedAway);
 
             buildFormPayload(document.getElementById('form-data'));
             setTimeout(() => { form.submit(); }, 50);
         }
 
-        // --- SMART INITIALIZATION ---
-        window.onload = function() {
+        // 3. THE NEW LAYOUT AND ONLOAD FUNCTIONS
+        function applyLayout() {
+            tacticalMemory = { '5v5': {}, '11v11': {} };
             let cards = document.querySelectorAll('.card');
-            let count5 = 0; let count11 = 0;
-
+            
             cards.forEach(c => {
                 let s5 = c.getAttribute('data-slot-5');
                 let s11 = c.getAttribute('data-slot-11');
-                if(s5 && s5 !== 'None' && s5 !== '') { tacticalMemory['5v5'][c.id] = s5; count5++; }
-                if(s11 && s11 !== 'None' && s11 !== '') { tacticalMemory['11v11'][c.id] = s11; count11++; }
+                if(s5 && s5 !== 'None' && s5 !== '') { tacticalMemory['5v5'][c.id] = s5; }
+                if(s11 && s11 !== 'None' && s11 !== '') { tacticalMemory['11v11'][c.id] = s11; }
             });
 
-            let initialMode = (count11 > 5) ? '11v11' : '5v5';
-            changeMode(initialMode, true);
+            let currentMode = document.getElementById('mode-selector').value;
+            changeMode(currentMode, true);
 
-            // Trigger slider text updates so they don't incorrectly display "Balanced" on load
             ['tempo', 'width', 'depth', 'press', 'risk'].forEach(key => {
                 let el = document.querySelector(`input[name="sys_${key}"]`);
                 if(el) updateSystem(key, el.value);
             });
+        }
+
+        window.onload = function() {
+            let savedHome = sessionStorage.getItem('lab_home');
+            let savedAway = sessionStorage.getItem('lab_away');
+            if(savedHome) document.getElementById('ui_home_team').value = savedHome;
+            if(savedAway) document.getElementById('ui_away_team').value = savedAway;
+            
+            applyLayout();
         };
     </script>
 </body>

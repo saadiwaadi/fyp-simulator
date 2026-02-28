@@ -2,6 +2,8 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
+    path('match/<int:match_id>/report/', views.match_analysis, name='match_analysis'),
+    
     # 1. Configuration (The Lab)
     path('', views.tactical_lab, name='tactical_lab'),
     

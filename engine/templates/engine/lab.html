@@ -3,7 +3,13 @@
 <html>
 <head>
     <title>TACTICAL LAB // SYSTEM_V4_FINAL</title>
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
+    <script src="https://bernardo-castilho.github.io/DragDropTouch/DragDropTouch.js"></script>
+
     <style>
+        /* ... your existing CSS starts here ... */
         /* --- 1. AESTHETIC --- */
         :root { 
             --bg: #050505; --panel: #0b0b0b; --border: #222; 
@@ -32,7 +38,6 @@
         /* SLOTS */
         .slot { width: 60px; height: 60px; border: 2px dashed #333; border-radius: 50%; position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; justify-content: center; transition: all 0.3s; z-index: 1; }
         .slot.drag-over { border-color: var(--neon-green); box-shadow: 0 0 20px rgba(0, 255, 65, 0.2); }
-        .slot-name { font-size: 9px; color: #555; margin-top: 65px; position: absolute; width: 100px; text-align: center; pointer-events: none; }
 
         /* CONSOLE (RIGHT PANEL) */
         .console { grid-column: 2 / 3; grid-row: 2 / 4; background: var(--panel); border-left: 1px solid var(--border); padding: 20px; display: flex; flex-direction: column; gap: 10px; }
@@ -84,7 +89,12 @@
         .card:hover { border-color: var(--neon-blue); }
         .card.deployed { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 100%; height: 100%; background: transparent; border: none; z-index: 10; }
         .card-role { font-size: 14px; font-weight: bold; color: #666; }
+        
+        /* The Card Name Fix */
         .card-name { font-size: 10px; color: #ccc; margin-top: 5px; text-align: center; }
+        .card.deployed .card-role { color: var(--neon-green); font-size: 18px; }
+        .card.deployed .card-name { display: block; position: absolute; top: 55px; width: 120px; font-size: 11px; color: var(--text-light); text-align: center; pointer-events: none; text-shadow: 0px 2px 4px rgba(0,0,0,0.8); }
+        
         .tiny-sta { width: 40px; height: 2px; background: #333; margin-top: 5px; }
         .tiny-sta-fill { height: 100%; background: var(--neon-green); width: 80%; }
 
@@ -114,13 +124,68 @@
         .mode-11v11 #pos-ST { top: 18%; left: 50%; }
         .mode-11v11 #pos-RW { top: 25%; left: 85%; }
         .mode-11v11 .slot-5 { display: none; }
+
+        /* ========================================= */
+        /* 📱 MOBILE RESPONSIVENESS (PHONES & TABLETS)*/
+        /* ========================================= */
+        @media (max-width: 800px) {
+            body { 
+                height: auto; 
+                overflow-y: auto; /* Allow scrolling on mobile */
+            }
+            
+            .app-container {
+                display: flex; /* Break the grid! */
+                flex-direction: column;
+                height: auto;
+            }
+
+            /* Stack the Header */
+            .top-bar {
+                height: auto;
+                flex-direction: column;
+                padding: 15px;
+                gap: 15px;
+                text-align: center;
+            }
+
+            .top-bar div {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            /* Make the Pitch fit the screen */
+            .pitch-container {
+                height: 60vh; /* Take up 60% of the phone screen */
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+            }
+
+            /* Let the bench scroll horizontally seamlessly */
+            .bench {
+                height: 120px;
+            }
+
+            /* Move the console to the bottom */
+            .console {
+                width: 100%;
+                border-left: none;
+                box-sizing: border-box;
+                padding-bottom: 50px; /* Padding for mobile scrolling */
+            }
+            
+            /* Shrink slots slightly so they fit on narrow screens */
+            .slot { width: 50px; height: 50px; }
+            .card.deployed .card-name { top: 45px; font-size: 9px; }
+        }
     </style>
+    
 </head>
 <body>
 
     <div id="loader">
         <div class="spinner"></div>
-        <div class="loading-text">SIMULATING MATCH...</div>
+        <div class="loading-text">RECALIBRATING TACTICS...</div>
     </div>
 
     <div class="app-container">
@@ -128,22 +193,23 @@
             <div style="font-weight:bold;">>> TACTICAL LAB // V4</div>
             
             <div style="display:flex; gap:10px; align-items: center;">
+                
                 <span style="font-size: 10px; color: #888;">EDITING:</span>
-                <select class="mode-switch" onchange="switchTeam(this.value)">
+                <select class="mode-switch" id="ui_edit_team" onchange="switchTeam(this.value)">
                     {% for t in teams %}
                         <option value="{{ t.id }}" {% if t.id == active_edit_team_id %}selected{% endif %}>{{ t.name }}</option>
                     {% endfor %}
                 </select>
 
                 <span style="font-size: 10px; color: #888; margin-left: 20px;">HOME:</span>
-                <select class="mode-switch" id="ui_home_team">
+                <select class="mode-switch" id="ui_home_team" onchange="sessionStorage.setItem('lab_home', this.value)">
                     {% for t in teams %}
-                        <option value="{{ t.id }}" {% if t.id == active_edit_team_id %}selected{% endif %}>{{ t.name }}</option>
+                        <option value="{{ t.id }}">{{ t.name }}</option>
                     {% endfor %}
                 </select>
                 
                 <span style="font-size: 10px; color: #888;">AWAY:</span>
-                <select class="mode-switch" id="ui_away_team">
+                <select class="mode-switch" id="ui_away_team" onchange="sessionStorage.setItem('lab_away', this.value)">
                     {% for t in teams %}
                         <option value="{{ t.id }}">{{ t.name }}</option>
                     {% endfor %}
@@ -162,23 +228,23 @@
             <div class="zone-label z-mid">MIDFIELD</div>
             <div class="zone-label z-def">DEFENSIVE</div>
             
-            <div class="slot slot-5" id="pos-GK-5" data-zone="GK" ondrop="drop(event)" ondragover="allowDrop(event)"><div class="slot-name">GK</div></div>
-            <div class="slot slot-5" id="pos-DL-5" data-zone="L" ondrop="drop(event)" ondragover="allowDrop(event)"><div class="slot-name">DEF L</div></div>
-            <div class="slot slot-5" id="pos-DR-5" data-zone="R" ondrop="drop(event)" ondragover="allowDrop(event)"><div class="slot-name">DEF R</div></div>
-            <div class="slot slot-5" id="pos-MID-5" data-zone="C" ondrop="drop(event)" ondragover="allowDrop(event)"><div class="slot-name">MID</div></div>
-            <div class="slot slot-5" id="pos-FWD-5" data-zone="C" ondrop="drop(event)" ondragover="allowDrop(event)"><div class="slot-name">FWD</div></div>
+            <div class="slot slot-5" id="pos-GK-5" data-zone="GK" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+            <div class="slot slot-5" id="pos-DL-5" data-zone="L" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+            <div class="slot slot-5" id="pos-DR-5" data-zone="R" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+            <div class="slot slot-5" id="pos-MID-5" data-zone="C" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+            <div class="slot slot-5" id="pos-FWD-5" data-zone="C" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
 
-            <div class="slot slot-11" id="pos-GK" data-zone="GK" ondrop="drop(event)" ondragover="allowDrop(event)"><div class="slot-name">GK</div></div>
-            <div class="slot slot-11" id="pos-LB" data-zone="L" ondrop="drop(event)" ondragover="allowDrop(event)"><div class="slot-name">LB</div></div>
-            <div class="slot slot-11" id="pos-LCB" data-zone="C" ondrop="drop(event)" ondragover="allowDrop(event)"><div class="slot-name">LCB</div></div>
-            <div class="slot slot-11" id="pos-RCB" data-zone="C" ondrop="drop(event)" ondragover="allowDrop(event)"><div class="slot-name">RCB</div></div>
-            <div class="slot slot-11" id="pos-RB" data-zone="R" ondrop="drop(event)" ondragover="allowDrop(event)"><div class="slot-name">RB</div></div>
-            <div class="slot slot-11" id="pos-CDM" data-zone="C" ondrop="drop(event)" ondragover="allowDrop(event)"><div class="slot-name">CDM</div></div>
-            <div class="slot slot-11" id="pos-LCM" data-zone="L" ondrop="drop(event)" ondragover="allowDrop(event)"><div class="slot-name">LCM</div></div>
-            <div class="slot slot-11" id="pos-RCM" data-zone="R" ondrop="drop(event)" ondragover="allowDrop(event)"><div class="slot-name">RCM</div></div>
-            <div class="slot slot-11" id="pos-LW" data-zone="L" ondrop="drop(event)" ondragover="allowDrop(event)"><div class="slot-name">LW</div></div>
-            <div class="slot slot-11" id="pos-ST" data-zone="C" ondrop="drop(event)" ondragover="allowDrop(event)"><div class="slot-name">ST</div></div>
-            <div class="slot slot-11" id="pos-RW" data-zone="R" ondrop="drop(event)" ondragover="allowDrop(event)"><div class="slot-name">RW</div></div>
+            <div class="slot slot-11" id="pos-GK" data-zone="GK" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+            <div class="slot slot-11" id="pos-LB" data-zone="L" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+            <div class="slot slot-11" id="pos-LCB" data-zone="C" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+            <div class="slot slot-11" id="pos-RCB" data-zone="C" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+            <div class="slot slot-11" id="pos-RB" data-zone="R" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+            <div class="slot slot-11" id="pos-CDM" data-zone="C" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+            <div class="slot slot-11" id="pos-LCM" data-zone="L" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+            <div class="slot slot-11" id="pos-RCM" data-zone="R" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+            <div class="slot slot-11" id="pos-LW" data-zone="L" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+            <div class="slot slot-11" id="pos-ST" data-zone="C" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+            <div class="slot slot-11" id="pos-RW" data-zone="R" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
         </div>
 
         <div class="console">
@@ -271,7 +337,7 @@
             {% for p in players %}
             <div class="card" id="p-{{ p.id }}" draggable="true" ondragstart="drag(event)" onclick="inspectPlayer('{{ p.id }}')"
                  data-id="{{ p.id }}" data-name="{{ p.name }}" data-role="{{ p.role }}"
-                 data-sta="{{ p.stamina }}" data-spd="{{ p.speed }}" data-sho="{{ p.shooting }}" data-def="{{ p.defense }}"
+                 data-team-id="{{ p.team.id }}"  data-sta="{{ p.stamina }}" data-spd="{{ p.speed }}" data-sho="{{ p.shooting }}" data-def="{{ p.defense }}"
                  data-slot-5="{{ p.slot_5v5|default:'' }}" 
                  data-slot-11="{{ p.slot_11v11|default:'' }}"
                  data-instr="{{ p.tactical_instruction }}" data-sp="{{ p.set_piece_role }}">
@@ -289,7 +355,6 @@
         <div id="form-data"></div>
     </form>
 
-    
     <script>
         // --- 0. DATA & CONFIG ---
         const TACTICAL_MENUS = {
@@ -319,6 +384,16 @@
         };
 
         let tacticalMemory = { '5v5': {}, '11v11': {} };
+
+        // --- BENCH SORTER ---
+        function sortBench() {
+            const bench = document.getElementById('bench');
+            if (!bench) return;
+            const cards = Array.from(bench.querySelectorAll('.card'));
+            const roleOrder = { 'GK': 1, 'DEF': 2, 'MID': 3, 'FWD': 4 };
+            cards.sort((a, b) => (roleOrder[a.getAttribute('data-role')] || 5) - (roleOrder[b.getAttribute('data-role')] || 5));
+            cards.forEach(card => bench.appendChild(card));
+        }
 
         // --- 1. UI LOGIC ---
         function toggleConsole(panel) {
@@ -357,11 +432,6 @@
             let s_el = document.getElementById('sys-struct');
             if(riskScore > 4) { s_el.innerText = "EXPOSED"; s_el.className = "val-high"; }
             else { s_el.innerText = "SOLID"; s_el.className = "val-low"; }
-
-            let p_el = document.getElementById('sys-pass');
-            if(risk < 3) p_el.innerText = "SHORT / SAFE";
-            else if(risk > 3) p_el.innerText = "LONG / RISKY";
-            else p_el.innerText = "MIXED";
         }
 
         function changeMode(newMode, isInit = false) {
@@ -388,9 +458,18 @@
             for (const [cardId, slotId] of Object.entries(savedLayout)) {
                 const card = document.getElementById(cardId);
                 const slot = document.getElementById(slotId);
-                if (card && slot) {
-                    slot.appendChild(card);
-                    card.classList.add('deployed');
+                
+                if (card && slot && card.style.display !== 'none') { 
+                    // 🛡️ THE BOUNCER: Check if the slot is already occupied
+                    if (slot.querySelector('.card')) {
+                        // Slot is full! Send the extra database ghost to the bench.
+                        bench.appendChild(card);
+                        card.classList.remove('deployed');
+                    } else {
+                        // Slot is empty. Safe to deploy.
+                        slot.appendChild(card); 
+                        card.classList.add('deployed'); 
+                    }
                 }
             }
         }
@@ -413,6 +492,7 @@
                 let mode = document.getElementById('form-mode').value;
                 tacticalMemory[mode][card.id] = slot.id;
                 inspectPlayer(card.getAttribute('data-id'));
+                sortBench();
             }
         }
 
@@ -446,9 +526,7 @@
             const options = TACTICAL_MENUS[contextKey] || [{val:'Standard', name:'Standard'}];
             options.forEach(opt => {
                 let el = document.createElement('option');
-                el.value = opt.val;
-                el.innerText = opt.name;
-                select.appendChild(el);
+                el.value = opt.val; el.innerText = opt.name; select.appendChild(el);
             });
             select.value = (currentSelection && options.some(o => o.val === currentSelection)) ? currentSelection : options[0].val;
         }
@@ -458,14 +536,9 @@
             const card = document.getElementById('p-' + pid);
             const instr = document.getElementById('input-instr').value;
             card.setAttribute('data-instr', instr);
-
             const weights = ROLE_WEIGHTS[instr] || ROLE_WEIGHTS['Standard'];
-            const s = {
-                'sta': parseInt(card.getAttribute('data-sta')), 'spd': parseInt(card.getAttribute('data-spd')),
-                'sho': parseInt(card.getAttribute('data-sho')), 'def': 50
-            };
+            const s = { 'sta': parseInt(card.getAttribute('data-sta')), 'spd': parseInt(card.getAttribute('data-spd')), 'sho': parseInt(card.getAttribute('data-sho')), 'def': 50 };
             s['pas'] = Math.round((s.sho + s.spd)/2); 
-
             let score = 0, max = 0;
             for (const [k, w] of Object.entries(weights)) { score += (s[k] || 50) * w; max += 100 * w; }
             const pct = Math.round((score / max) * 100);
@@ -478,15 +551,6 @@
             let pid = document.getElementById('active-player-id').value; if(!pid) return;
             let card = document.getElementById('p-' + pid);
             let val = document.getElementById('input-' + type).value;
-            if (type === 'sp' && val !== "") {
-                ['CAP', 'PEN', 'CR', 'FK'].forEach(role => {
-                    if (val === role) {
-                        document.querySelectorAll('.card').forEach(c => {
-                            if (c.id !== card.id && c.getAttribute('data-sp') === role) c.setAttribute('data-sp', "");
-                        });
-                    }
-                });
-            }
             card.setAttribute('data-' + type, val);
         }
 
@@ -498,130 +562,103 @@
 
         function addHidden(p, n, v) { let i = document.createElement('input'); i.type='hidden'; i.name=n; i.value=v; p.appendChild(i); }
 
-        // FIX 3: Master function to scrape all data before submitting
         function buildFormPayload(container) {
             container.innerHTML = "";
-            
-            // 1. Get Players
             let cards = document.querySelectorAll('.card.deployed');
             cards.forEach(c => {
-                let pid = c.getAttribute('data-id');
-                let slot = c.parentElement;
-                addHidden(container, 'starting_players', pid);
-                addHidden(container, `slot_${pid}`, slot.id); 
-                addHidden(container, `instruction_${pid}`, c.getAttribute('data-instr')||"");
-                addHidden(container, `set_piece_${pid}`, c.getAttribute('data-sp')||"");
+                if (c.style.display !== 'none') {
+                    let pid = c.getAttribute('data-id');
+                    addHidden(container, 'starting_players', pid);
+                    addHidden(container, `slot_${pid}`, c.parentElement.id); 
+                    addHidden(container, `instruction_${pid}`, c.getAttribute('data-instr')||"");
+                    addHidden(container, `set_piece_${pid}`, c.getAttribute('data-sp')||"");
+                }
             });
-
-            // 2. Get Sliders directly from the UI
-            addHidden(container, 'sys_tempo', document.querySelector('input[name="sys_tempo"]').value);
-            addHidden(container, 'sys_width', document.querySelector('input[name="sys_width"]').value);
-            addHidden(container, 'sys_depth', document.querySelector('input[name="sys_depth"]').value);
-            addHidden(container, 'sys_press', document.querySelector('input[name="sys_press"]').value);
-            addHidden(container, 'sys_risk',  document.querySelector('input[name="sys_risk"]').value);
+            ['tempo', 'width', 'depth', 'press', 'risk'].forEach(key => {
+                let el = document.querySelector('input[name="sys_'+key+'"]');
+                if(el) addHidden(container, 'sys_'+key, el.value);
+            });
         }
 
-        // ... (your other functions like buildFormPayload are up here) ...
-
-        // 1. THE NEW ASYNC SWITCH TEAM FUNCTION
-        // 1. THE NEW ASYNC SWITCH TEAM FUNCTION
-        async function switchTeam(newTeamId) {
+        // --- FIX 3: BULLETPROOF NATIVE SWITCH ---
+        function switchTeam(newTeamId) {
             document.getElementById('loader').style.display = 'flex';
-            let form = document.getElementById('exe-form');
             
-            let execFlag = form.querySelector('input[name="execute_match"]');
-            if(execFlag) execFlag.remove();
+            // Lock in the memory before reloading
+            sessionStorage.setItem('lab_home', document.getElementById('ui_home_team').value);
+            sessionStorage.setItem('lab_away', document.getElementById('ui_away_team').value);
+            sessionStorage.setItem('lab_edit', newTeamId);
 
+            let form = document.getElementById('exe-form');
             addHidden(form, 'edit_team_id', newTeamId);
             buildFormPayload(document.getElementById('form-data'));
-
-            let formData = new FormData(form);
             
-            try {
-                let response = await fetch(window.location.href, {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                let htmlText = await response.text();
-                let parser = new DOMParser();
-                let doc = parser.parseFromString(htmlText, 'text/html');
-
-                // Surgically swap out ONLY the pitch, bench, and sliders
-                document.getElementById('pitch').innerHTML = doc.getElementById('pitch').innerHTML;
-                document.getElementById('bench').innerHTML = doc.getElementById('bench').innerHTML;
-                document.getElementById('panel-system').innerHTML = doc.getElementById('panel-system').innerHTML;
-
-                document.getElementById('player-controls').style.display = 'none';
-                document.getElementById('player-placeholder').style.display = 'block';
-
-                applyLayout();
-
-            } catch (error) {
-                console.error("AJAX Error:", error);
-                form.submit(); 
-            } finally {
-                document.getElementById('loader').style.display = 'none';
-            }
+            form.submit(); // Native reload. Zero AJAX bugs.
         }
 
-        // 2. FULL EXECUTE MISSION FUNCTION
         function executeMission() {
             let mode = document.getElementById('form-mode').value;
             let req = (mode === '5v5') ? 5 : 11;
-            let cards = document.querySelectorAll('.card.deployed');
+            
+            let activeDeployedCount = 0;
+            document.querySelectorAll('.card.deployed').forEach(c => {
+                if(c.style.display !== 'none') activeDeployedCount++;
+            });
 
-            if(cards.length < req) { 
-                alert(`SQUAD UNDERSTRENGTH. ${mode} REQUIRES ${req} PLAYERS.`); 
-                return; 
-            }
-
+            if(activeDeployedCount < req) { alert(`SQUAD UNDERSTRENGTH. ${mode} REQUIRES ${req} PLAYERS.`); return; }
+            
             document.getElementById('loader').style.display = 'flex';
             let form = document.getElementById('exe-form');
-            
-            // Ensure the execute flag exists
-            if(!form.querySelector('input[name="execute_match"]')) {
-                addHidden(form, 'execute_match', 'true');
-            }
-
-            // Grab the Home and Away teams from the new UI dropdowns
-            let selectedHome = document.getElementById('ui_home_team').value;
-            let selectedAway = document.getElementById('ui_away_team').value;
-            
-            // Inject them into the hidden form
-            addHidden(form, 'home_team', selectedHome);
-            addHidden(form, 'away_team', selectedAway);
-
+            addHidden(form, 'execute_match', 'true');
+            addHidden(form, 'home_team', document.getElementById('ui_home_team').value);
+            addHidden(form, 'away_team', document.getElementById('ui_away_team').value);
             buildFormPayload(document.getElementById('form-data'));
-            setTimeout(() => { form.submit(); }, 50);
+            form.submit();
         }
 
-        // 3. THE NEW LAYOUT AND ONLOAD FUNCTIONS
         function applyLayout() {
+            const bench = document.getElementById('bench');
+            document.querySelectorAll('.slot .card').forEach(card => {
+                bench.appendChild(card);
+                card.classList.remove('deployed');
+            });
+
+            let currentEditTeamId = document.getElementById('ui_edit_team').value;
+
             tacticalMemory = { '5v5': {}, '11v11': {} };
             let cards = document.querySelectorAll('.card');
             
             cards.forEach(c => {
-                let s5 = c.getAttribute('data-slot-5');
-                let s11 = c.getAttribute('data-slot-11');
-                if(s5 && s5 !== 'None' && s5 !== '') { tacticalMemory['5v5'][c.id] = s5; }
-                if(s11 && s11 !== 'None' && s11 !== '') { tacticalMemory['11v11'][c.id] = s11; }
+                // FILTER: Only show cards for the team we are editing
+                if (c.getAttribute('data-team-id') === currentEditTeamId) {
+                    c.style.display = 'flex'; 
+                    let s5 = c.getAttribute('data-slot-5');
+                    let s11 = c.getAttribute('data-slot-11');
+                    if(s5 && s5 !== 'None' && s5 !== '') tacticalMemory['5v5'][c.id] = s5;
+                    if(s11 && s11 !== 'None' && s11 !== '') tacticalMemory['11v11'][c.id] = s11;
+                } else {
+                    c.style.display = 'none'; // Hide players from other teams
+                }
             });
 
-            let currentMode = document.getElementById('mode-selector').value;
-            changeMode(currentMode, true);
-
+            changeMode(document.getElementById('mode-selector').value, true);
+            
             ['tempo', 'width', 'depth', 'press', 'risk'].forEach(key => {
                 let el = document.querySelector(`input[name="sys_${key}"]`);
                 if(el) updateSystem(key, el.value);
             });
+            sortBench();
         }
 
+        // --- MEMORY BOOT ---
         window.onload = function() {
-            let savedHome = sessionStorage.getItem('lab_home');
-            let savedAway = sessionStorage.getItem('lab_away');
-            if(savedHome) document.getElementById('ui_home_team').value = savedHome;
-            if(savedAway) document.getElementById('ui_away_team').value = savedAway;
+            let sH = sessionStorage.getItem('lab_home');
+            let sA = sessionStorage.getItem('lab_away');
+            let sE = sessionStorage.getItem('lab_edit');
+
+            if(sH) document.getElementById('ui_home_team').value = sH;
+            if(sA) document.getElementById('ui_away_team').value = sA;
+            if(sE && document.getElementById('ui_edit_team')) document.getElementById('ui_edit_team').value = sE;
             
             applyLayout();
         };

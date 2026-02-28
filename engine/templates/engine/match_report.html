@@ -1,160 +1,1320 @@
 {% load static %}
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>TACTICAL AUTOPSY // REPORT</title>
-    <style>
-        :root { --bg: #080808; --panel: #111; --border: #333; --accent: #00ff41; --text: #aaa; --crit: #ff3333; --blue: #00ccff; }
-        body { background: var(--bg); color: var(--text); font-family: 'Courier New', monospace; padding: 20px; display: flex; justify-content: center; }
-        
-        .report-container { width: 1100px; display: grid; grid-template-columns: 1.5fr 1fr; gap: 20px; }
-        
-        /* HEADER */
-        .header { grid-column: 1 / -1; border-bottom: 2px solid var(--border); padding-bottom: 20px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end; }
-        .match-title { font-size: 32px; color: #fff; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; }
-        .outcome-tag { background: #222; color: var(--accent); padding: 8px 12px; font-size: 12px; border: 1px solid var(--accent); font-weight: bold; }
-        
-        /* PANELS */
-        .panel { background: var(--panel); border: 1px solid var(--border); padding: 20px; margin-bottom: 20px; }
-        .p-title { font-size: 11px; text-transform: uppercase; color: #666; border-bottom: 1px solid #333; padding-bottom: 8px; margin-bottom: 15px; font-weight: bold; letter-spacing: 1px; }
-        
-        /* TIMELINE */
-        .timeline-row { display: flex; align-items: center; margin-bottom: 8px; font-size: 10px; }
-        .time-lbl { width: 30px; color: #555; }
-        .bar-wrapper { flex: 1; display: flex; gap:4px; }
-        .bar-c-l { flex: 1; height: 8px; background: #222; display:flex; justify-content:flex-end; }
-        .bar-c-r { flex: 1; height: 8px; background: #222; display:flex; justify-content:flex-start; }
-        .bar-fill { height: 100%; }
-        .bf-home { background: var(--blue); } .bf-away { background: var(--crit); }
-        
-        /* DIAGNOSTICS GRID */
-        .diag-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-        .metric-box { border-left: 2px solid #444; padding-left: 10px; }
-        .m-lbl { font-size: 10px; color: #666; text-transform: uppercase; }
-        .m-val { font-size: 14px; color: #eee; font-weight: bold; }
-        
-        /* TURNING POINT */
-        .tp-box { background: rgba(255, 51, 51, 0.1); border: 1px solid var(--crit); padding: 15px; margin-bottom: 20px; }
-        .tp-head { color: var(--crit); font-size: 11px; font-weight: bold; margin-bottom: 5px; }
-        .tp-body { color: #fff; font-size: 13px; line-height: 1.4; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DEEP SCAN // {{ match_state.home_team }} vs {{ match_state.away_team }}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Barlow+Condensed:wght@300;400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 
-        /* DETAILED IMPACT */
-        .impact-card { display: flex; justify-content: space-between; border-bottom: 1px dashed #333; padding: 10px 0; }
-        .ic-main { display: flex; gap: 10px; align-items: baseline; }
-        .ic-rank { color: var(--accent); font-weight: bold; font-size: 14px; }
-        .ic-name { color: #fff; font-weight: bold; font-size: 13px; }
-        .ic-score { color: var(--accent); font-size: 14px; }
-        .ic-details { margin-top: 5px; margin-left: 25px; display: flex; flex-direction: column; gap: 2px; }
-        .ic-det-row { font-size: 10px; color: #888; }
+<style>
+  :root {
+    --bg:       #080c10;
+    --surface:  #0d1520;
+    --border:   #1a2a3a;
+    --accent:   #00e5ff;
+    --gold:     #ffd700;
+    --danger:   #ff3b3b;
+    --success:  #00ff88;
+    --text:     #c8d8e8;
+    --muted:    #4a6a7a;
+    --home:     #00e5ff;
+    --away:     #ff6b35;
+  }
 
-        /* ZONE DOMINANCE */
-        .zone-row { display: flex; justify-content: space-between; font-size: 11px; padding: 5px 0; border-bottom: 1px solid #222; }
-        .z-name { color: #ccc; }
-        .z-win { color: var(--blue); font-weight: bold; }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-        /* ATTRIBUTION BAR */
-        .attr-bar { display: flex; height: 6px; width: 100%; background: #222; margin-top: 5px; }
-        .ab-sys { background: var(--accent); }
-        .ab-var { background: #444; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 15px;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
 
-        .footer { grid-column: 1 / -1; margin-top: 20px; display: flex; justify-content: flex-end; }
-        .btn { background: #000; border: 1px solid #444; color: #eee; padding: 12px 25px; text-decoration: none; font-size: 12px; cursor: pointer; text-transform: uppercase; }
-        .btn:hover { border-color: var(--accent); color: var(--accent); }
-    </style>
+  /* ─── SCANLINE OVERLAY ─────────────────────── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,229,255,0.015) 2px, rgba(0,229,255,0.015) 4px);
+    pointer-events: none;
+    z-index: 999;
+  }
+
+  /* ─── HEADER ───────────────────────────────── */
+  .report-header {
+    background: linear-gradient(180deg, #050a10 0%, var(--bg) 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 0;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .report-header::before {
+    content: 'TACTICAL LAB // DEEP SCAN REPORT // SYSTEM_V4';
+    position: absolute;
+    top: 12px; left: 0; right: 0;
+    text-align: center;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--muted);
+  }
+
+  .header-grid {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    padding: 40px 48px 28px;
+    gap: 24px;
+  }
+
+  .team-block { display: flex; flex-direction: column; }
+  .team-block.away { text-align: right; }
+
+  .team-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+
+  .team-name {
+    font-family: 'Orbitron', sans-serif;
+    font-size: clamp(18px, 2.5vw, 28px);
+    font-weight: 900;
+    letter-spacing: 1px;
+    line-height: 1;
+  }
+
+  .team-block.home .team-name { color: var(--home); }
+  .team-block.away .team-name { color: var(--away); }
+
+  .score-block { text-align: center; }
+
+  .score-display {
+    font-family: 'Orbitron', sans-serif;
+    font-size: clamp(48px, 7vw, 80px);
+    font-weight: 900;
+    line-height: 1;
+    letter-spacing: -2px;
+    background: linear-gradient(180deg, #ffffff 0%, var(--text) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .score-sep { color: var(--muted); margin: 0 4px; }
+
+  .match-meta {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+
+  .outcome-badge {
+    display: inline-block;
+    margin-top: 8px;
+    padding: 3px 12px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    border-radius: 2px;
+  }
+
+  .outcome-badge.systemic { background: rgba(0,255,136,0.15); border: 1px solid var(--success); color: var(--success); }
+  .outcome-badge.variance { background: rgba(255,215,0,0.12); border: 1px solid var(--gold); color: var(--gold); }
+
+  /* ─── NAV BAR ───────────────────────────────── */
+  .report-nav {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+    padding: 0 48px;
+    background: var(--surface);
+  }
+
+  .nav-tab {
+    padding: 12px 20px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    user-select: none;
+    white-space: nowrap;
+  }
+
+  .nav-tab:hover { color: var(--text); }
+  .nav-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* ─── MAIN LAYOUT ───────────────────────────── */
+  .report-body { padding: 32px 48px 64px; max-width: 1400px; margin: 0 auto; }
+
+  .panel {
+    display: none;
+    animation: fadeIn 0.3s ease;
+  }
+
+  .panel.active { display: block; }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ─── SECTION TITLES ────────────────────────── */
+  .section-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px;
+    letter-spacing: 4px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .section-title::before {
+    content: '';
+    display: inline-block;
+    width: 3px; height: 14px;
+    background: var(--accent);
+  }
+
+  /* ─── STAT GRID ─────────────────────────────── */
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 16px 20px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 3px; height: 100%;
+    background: var(--accent);
+  }
+
+  .stat-card.danger::before { background: var(--danger); }
+  .stat-card.success::before { background: var(--success); }
+  .stat-card.gold::before { background: var(--gold); }
+
+  .stat-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+
+  .stat-value {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1;
+  }
+
+  .stat-sub {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 4px;
+    font-family: 'Share Tech Mono', monospace;
+  }
+
+  /* ─── POSSESSION BAR ────────────────────────── */
+  .possession-section { margin-bottom: 28px; }
+
+  .poss-bar-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 20px 24px;
+  }
+
+  .poss-labels {
+    display: flex;
+    justify-content: space-between;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+  }
+
+  .poss-labels .home-label { color: var(--home); }
+  .poss-labels .away-label { color: var(--away); }
+
+  .poss-track {
+    height: 8px;
+    background: var(--border);
+    border-radius: 0;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .poss-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--home), color-mix(in srgb, var(--home) 50%, transparent));
+    transition: width 1s ease;
+  }
+
+  .poss-marker {
+    position: absolute;
+    top: -4px;
+    width: 2px; height: 16px;
+    background: var(--text);
+    left: 50%;
+    transform: translateX(-50%);
+    opacity: 0.4;
+  }
+
+  /* ─── INTEGRITY BAR ─────────────────────────── */
+  .integrity-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+
+  .int-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 16px 20px;
+  }
+
+  .int-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 10px;
+  }
+
+  .int-name { font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 2px; }
+  .int-name.home { color: var(--home); }
+  .int-name.away { color: var(--away); }
+
+  .int-pct {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+  }
+
+  .int-bar-track {
+    height: 6px;
+    background: var(--border);
+    overflow: hidden;
+  }
+
+  .int-bar-fill {
+    height: 100%;
+    transition: width 1.2s ease;
+  }
+
+  .int-bar-fill.home { background: var(--home); }
+  .int-bar-fill.away { background: var(--away); }
+
+  .int-bar-fill.critical { background: var(--danger) !important; }
+
+  /* ─── CHART AREA ────────────────────────────── */
+  .chart-container {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 20px 24px;
+    margin-bottom: 28px;
+    position: relative;
+  }
+
+  .chart-container canvas { width: 100% !important; }
+
+  .chart-legend {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 16px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: var(--muted);
+  }
+
+  .legend-dot {
+    width: 10px; height: 3px;
+    border-radius: 2px;
+  }
+
+  /* ─── ZONE CONTROL ──────────────────────────── */
+  .zone-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+
+  .zone-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 18px;
+    text-align: center;
+  }
+
+  .zone-name {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  .zone-winner {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+
+  .zone-margin {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  /* ─── IMPACT TABLE ──────────────────────────── */
+  .impact-list { margin-bottom: 28px; }
+
+  .impact-row {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    margin-bottom: 8px;
+    padding: 14px 20px;
+    display: grid;
+    grid-template-columns: 28px 1fr auto;
+    align-items: center;
+    gap: 16px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .impact-row:hover { border-color: var(--accent); }
+
+  .impact-row.mvp {
+    border-color: var(--gold);
+    background: linear-gradient(90deg, rgba(255,215,0,0.06) 0%, var(--surface) 60%);
+  }
+
+  .impact-row.mvp::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 3px; height: 100%;
+    background: var(--gold);
+  }
+
+  .impact-rank {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  .impact-row.mvp .impact-rank { color: var(--gold); }
+
+  .impact-info {}
+
+  .impact-player-name {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    margin-bottom: 3px;
+  }
+
+  .impact-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .impact-tag {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 1px;
+    color: var(--muted);
+    padding: 2px 6px;
+    border: 1px solid var(--border);
+  }
+
+  .impact-score {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--accent);
+    text-align: right;
+  }
+
+  .impact-row.mvp .impact-score { color: var(--gold); }
+
+  .mvp-badge {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 8px;
+    letter-spacing: 2px;
+    padding: 2px 8px;
+    background: rgba(255,215,0,0.15);
+    border: 1px solid var(--gold);
+    color: var(--gold);
+  }
+
+  /* ─── TURNING POINT ─────────────────────────── */
+  .turning-point-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 20px 24px;
+    margin-bottom: 28px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .turning-point-card::after {
+    content: '!';
+    position: absolute;
+    right: 24px; top: 50%;
+    transform: translateY(-50%);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 64px;
+    font-weight: 900;
+    color: rgba(255,215,0,0.05);
+    pointer-events: none;
+  }
+
+  .tp-text {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.5;
+  }
+
+  /* ─── ATTRIBUTION ───────────────────────────── */
+  .attribution-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+
+  .attr-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 18px 20px;
+    text-align: center;
+  }
+
+  .attr-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 3px;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+
+  .attr-value {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 28px;
+    font-weight: 700;
+  }
+
+  .attr-value.high { color: var(--success); }
+  .attr-value.moderate { color: var(--gold); }
+  .attr-value.low { color: var(--muted); }
+
+  /* ─── CAUSALITY CHAIN ───────────────────────── */
+  .causality-chain {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin-bottom: 28px;
+  }
+
+  .causality-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 16px;
+    font-weight: 400;
+    color: var(--text);
+    position: relative;
+  }
+
+  .causality-item:not(:first-child) {
+    border-top-color: transparent;
+  }
+
+  .causality-num {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--accent);
+    min-width: 20px;
+  }
+
+  .causality-arrow {
+    position: absolute;
+    left: 40px;
+    bottom: -1px;
+    width: 2px; height: 8px;
+    background: var(--accent);
+    z-index: 2;
+    opacity: 0.4;
+  }
+
+  .causality-item:last-child .causality-arrow { display: none; }
+
+  /* ─── PRESSURE MAP ──────────────────────────── */
+  .pressure-map {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 20px 24px;
+    margin-bottom: 28px;
+  }
+
+  .pressure-track {
+    position: relative;
+    height: 48px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  .pressure-marker {
+    position: absolute;
+    top: 4px;
+    width: 2px;
+    height: 40px;
+    background: linear-gradient(180deg, var(--accent), transparent);
+    opacity: 0.7;
+    transform: translateX(-50%);
+  }
+
+  .pressure-ruler {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 6px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+
+  .pressure-ruler span:last-child { text-align: right; }
+
+  /* ─── RATINGS ───────────────────────────────── */
+  .ratings-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+
+  .rating-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 18px 20px;
+  }
+
+  .rating-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+
+  .rating-value {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  /* ─── ACTION BAR ────────────────────────────── */
+  .action-bar {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: rgba(8, 12, 16, 0.95);
+    border-top: 1px solid var(--border);
+    padding: 14px 48px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    backdrop-filter: blur(8px);
+    z-index: 100;
+  }
+
+  .match-id-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--muted);
+  }
+
+  .btn-group { display: flex; gap: 12px; }
+
+  .btn {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    padding: 10px 22px;
+    cursor: pointer;
+    border: 1px solid;
+    text-decoration: none;
+    transition: all 0.15s;
+    display: inline-block;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #000;
+  }
+
+  .btn-primary:hover { background: #00c8e0; border-color: #00c8e0; }
+
+  .btn-ghost {
+    background: transparent;
+    border-color: var(--border);
+    color: var(--muted);
+  }
+
+  .btn-ghost:hover { border-color: var(--text); color: var(--text); }
+
+  /* ─── RESPONSIVE ────────────────────────────── */
+  @media (max-width: 768px) {
+    .report-body { padding: 20px 20px 80px; }
+    .header-grid { padding: 36px 20px 24px; gap: 12px; }
+    .report-nav { padding: 0 20px; overflow-x: auto; }
+    .action-bar { padding: 14px 20px; }
+    .zone-grid { grid-template-columns: 1fr; }
+    .attribution-grid, .integrity-row, .ratings-grid { grid-template-columns: 1fr; }
+  }
+
+  /* ─── BOOT ANIMATION ────────────────────────── */
+  .boot-reveal {
+    opacity: 0;
+    transform: translateY(12px);
+    animation: bootIn 0.4s ease forwards;
+  }
+
+  .boot-reveal:nth-child(1) { animation-delay: 0.05s; }
+  .boot-reveal:nth-child(2) { animation-delay: 0.12s; }
+  .boot-reveal:nth-child(3) { animation-delay: 0.19s; }
+  .boot-reveal:nth-child(4) { animation-delay: 0.26s; }
+  .boot-reveal:nth-child(5) { animation-delay: 0.33s; }
+  .boot-reveal:nth-child(6) { animation-delay: 0.40s; }
+  .boot-reveal:nth-child(7) { animation-delay: 0.47s; }
+
+  @keyframes bootIn {
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
 </head>
 <body>
 
-    <div class="report-container">
-        <div class="header">
-            <div>
-                <div class="match-title">{{ stats.home_score }} - {{ stats.away_score }}</div>
-                <div style="font-size:11px; margin-top:8px; color:#666;">TACTICAL AUTOPSY // V3.5</div>
-            </div>
-            <div class="outcome-tag">{{ analysis.outcome_type }}</div>
-        </div>
+<!-- ═══════════════════════════════════════ HEADER -->
+<header class="report-header">
+  <div class="header-grid">
 
-        <div>
-            <div class="tp-box">
-                <div class="tp-head">⚠ CRITICAL TURNING POINT DETECTED</div>
-                <div class="tp-body">{{ analysis.turning_point }}</div>
-            </div>
-
-            <div class="panel">
-                <div class="p-title">>> STRUCTURAL INTEGRITY TIMELINE</div>
-                {% for snap in analysis.timeline %}
-                <div class="timeline-row">
-                    <div class="time-lbl">{{ snap.min }}'</div>
-                    <div class="bar-wrapper">
-                        <div class="bar-c-l"><div class="bar-fill bf-home" style="width: {{ snap.h_struct }}%;"></div></div>
-                        <div class="bar-c-r"><div class="bar-fill bf-away" style="width: {{ snap.a_struct }}%;"></div></div>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-
-            <div class="panel">
-                <div class="p-title">>> SYSTEM DIAGNOSTICS</div>
-                <div class="diag-grid">
-                    <div class="metric-box">
-                        <div class="m-lbl">System Execution</div>
-                        <div class="m-val">{{ analysis.ratings.system_execution }}</div>
-                    </div>
-                    <div class="metric-box">
-                        <div class="m-lbl">Press Sustainability</div>
-                        <div class="m-val">{{ analysis.ratings.press_sustainability }}</div>
-                    </div>
-                    <div class="metric-box">
-                        <div class="m-lbl">Structural Stability</div>
-                        <div class="m-val">{{ analysis.ratings.structural_stability }}</div>
-                    </div>
-                    <div class="metric-box">
-                        <div class="m-lbl">Outcome Attribution</div>
-                        <div class="m-val" style="font-size:11px;">Sys: {{ analysis.attribution.system }} | Var: {{ analysis.attribution.variance }}</div>
-                        <div class="attr-bar">
-                            <div class="ab-sys" style="width: {{ analysis.attribution.system }};"></div>
-                            <div class="ab-var" style="width: {{ analysis.attribution.variance }};"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div>
-            <div class="panel">
-                <div class="p-title">>> PLAYER IMPACT BREAKDOWN</div>
-                {% for p in analysis.impact %}
-                <div class="impact-card">
-                    <div style="flex:1;">
-                        <div class="ic-main">
-                            <span class="ic-rank">#{{ forloop.counter }}</span>
-                            <span class="ic-name">{{ p.name }}</span>
-                        </div>
-                        <div class="ic-details">
-                            {% for det in p.details %}
-                            <div class="ic-det-row">{{ det }}</div>
-                            {% endfor %}
-                        </div>
-                    </div>
-                    <div class="ic-score">+{{ p.total }}</div>
-                </div>
-                {% endfor %}
-            </div>
-
-            <div class="panel">
-                <div class="p-title">>> ZONE DOMINANCE SUMMARY</div>
-                {% for z in analysis.zones %}
-                <div class="zone-row">
-                    <span class="z-name">{{ z.name }} Channel</span>
-                    <span class="z-win">{{ z.winner }} (+{{ z.margin }})</span>
-                </div>
-                {% endfor %}
-            </div>
-        </div>
-
-        <div class="footer">
-            <a href="{% url 'tactical_lab' %}" class="btn">Adjust Tactics & Re-Run</a>
-        </div>
+    <div class="team-block home">
+      <div class="team-label">HOME</div>
+      <div class="team-name">{{ match_state.home_team }}</div>
+      {% if stats.home_score > stats.away_score %}
+        <span class="outcome-badge systemic" style="margin-top:8px; display:inline-block;">WINNER</span>
+      {% endif %}
     </div>
+
+    <div class="score-block">
+      <div class="score-display">
+        <span style="color: var(--home);">{{ stats.home_score }}</span>
+        <span class="score-sep"> – </span>
+        <span style="color: var(--away);">{{ stats.away_score }}</span>
+      </div>
+      <div class="match-meta">{{ match_state.mode|upper }} • {{ match_state.date_played|date:"D d M Y, H:i" }}</div>
+      {% if analysis.outcome_type == "Systemic Victory" %}
+        <span class="outcome-badge systemic">SYSTEMIC VICTORY</span>
+      {% else %}
+        <span class="outcome-badge variance">VARIANCE-BASED RESULT</span>
+      {% endif %}
+    </div>
+
+    <div class="team-block away">
+      <div class="team-label">AWAY</div>
+      <div class="team-name">{{ match_state.away_team }}</div>
+      {% if stats.away_score > stats.home_score %}
+        <span class="outcome-badge systemic" style="margin-top:8px; display:inline-block;">WINNER</span>
+      {% endif %}
+    </div>
+
+  </div>
+</header>
+
+<!-- ═══════════════════════════════════════ TABS -->
+<nav class="report-nav">
+  <div class="nav-tab active" data-panel="overview" onclick="switchTab(this,'overview')">OVERVIEW</div>
+  <div class="nav-tab" data-panel="impact" onclick="switchTab(this,'impact')">PLAYER IMPACT</div>
+  <div class="nav-tab" data-panel="zones" onclick="switchTab(this,'zones')">ZONE CONTROL</div>
+  <div class="nav-tab" data-panel="integrity" onclick="switchTab(this,'integrity')">INTEGRITY</div>
+  <div class="nav-tab" data-panel="analysis" onclick="switchTab(this,'analysis')">SYSTEM ANALYSIS</div>
+</nav>
+
+<!-- ═══════════════════════════════════════ BODY -->
+<main class="report-body">
+
+  <!-- ────────────────────────── OVERVIEW -->
+  <section id="panel-overview" class="panel active">
+
+    <div class="stat-grid boot-reveal">
+      <div class="stat-card">
+        <div class="stat-label">POSSESSION</div>
+        <div class="stat-value">{{ stats.home_possession_pct }}%</div>
+        <div class="stat-sub">{{ match_state.home_team }} controlled ball</div>
+      </div>
+      <div class="stat-card {% if stats.home_integrity_final < 40 %}danger{% elif stats.home_integrity_final >= 70 %}success{% endif %}">
+        <div class="stat-label">HOME INTEGRITY</div>
+        <div class="stat-value">{{ stats.home_integrity_final }}%</div>
+        <div class="stat-sub">Final structural rating</div>
+      </div>
+      <div class="stat-card {% if stats.away_integrity_final < 40 %}danger{% elif stats.away_integrity_final >= 70 %}success{% endif %}">
+        <div class="stat-label">AWAY INTEGRITY</div>
+        <div class="stat-value">{{ stats.away_integrity_final }}%</div>
+        <div class="stat-sub">Final structural rating</div>
+      </div>
+      <div class="stat-card {% if stats.fatigue_breach_min %}danger{% else %}success{% endif %}">
+        <div class="stat-label">FATIGUE BREACH</div>
+        <div class="stat-value">
+          {% if stats.fatigue_breach_min %}{{ stats.fatigue_breach_min }}'{% else %}—{% endif %}
+        </div>
+        <div class="stat-sub">
+          {% if stats.fatigue_breach_min %}Avg stamina dropped below 50{% else %}No breach recorded{% endif %}
+        </div>
+      </div>
+      <div class="stat-card {% if stats.struct_breach_min %}danger{% else %}success{% endif %}">
+        <div class="stat-label">STRUCTURE BREACH</div>
+        <div class="stat-value">
+          {% if stats.struct_breach_min %}{{ stats.struct_breach_min }}'{% else %}—{% endif %}
+        </div>
+        <div class="stat-sub">
+          {% if stats.struct_breach_min %}Shape collapsed below 40{% else %}No collapse recorded{% endif %}
+        </div>
+      </div>
+      <div class="stat-card gold">
+        <div class="stat-label">SYSTEM ATTRIBUTION</div>
+        <div class="stat-value">{{ analysis.attribution.system }}</div>
+        <div class="stat-sub">Tactical system contribution</div>
+      </div>
+    </div>
+
+    <div class="possession-section boot-reveal">
+      <div class="section-title">POSSESSION SHARE</div>
+      <div class="poss-bar-wrap">
+        <div class="poss-labels">
+          <span class="home-label">{{ match_state.home_team }} — {{ stats.home_possession_pct }}%</span>
+          <span class="away-label">{{ match_state.away_team }} — {% widthratio 100 1 1 as dummy %}{{ stats.home_possession_pct|add:"-100"|slice:"1:"|default:"0" }}%</span>
+        </div>
+        <div class="poss-track">
+          <div class="poss-fill" id="possFill" style="width: 0%;"></div>
+          <div class="poss-marker"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="boot-reveal">
+      <div class="section-title">TURNING POINT</div>
+      <div class="turning-point-card">
+        <div class="stat-label" style="margin-bottom: 8px;">CRITICAL EVENT DETECTION</div>
+        <div class="tp-text">{{ analysis.turning_point }}</div>
+      </div>
+    </div>
+
+    <div class="boot-reveal">
+      <div class="section-title">SYSTEM RATINGS</div>
+      <div class="ratings-grid">
+        <div class="rating-card">
+          <div class="rating-label">PRESS SUSTAINABILITY</div>
+          <div class="rating-value">{{ analysis.ratings.press_sustainability }}</div>
+        </div>
+        <div class="rating-card">
+          <div class="rating-label">STRUCTURAL STABILITY</div>
+          <div class="rating-value">{{ analysis.ratings.structural_stability }}</div>
+        </div>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ────────────────────────── PLAYER IMPACT -->
+  <section id="panel-impact" class="panel">
+
+    <div class="section-title">PLAYER OF THE MATCH</div>
+
+    {% if analysis.impact %}
+      {% with analysis.impact.0 as mvp %}
+      <div style="background: var(--surface); border: 1px solid var(--gold); padding: 20px 24px; margin-bottom: 24px; position: relative; overflow: hidden;">
+        <div style="position:absolute; top:0;left:0;right:0;height:2px; background: linear-gradient(90deg, var(--gold), transparent);"></div>
+        <div style="display:flex; justify-content:space-between; align-items: flex-start;">
+          <div>
+            <div style="font-family:'Share Tech Mono',monospace; font-size:9px; letter-spacing:3px; color:var(--gold); margin-bottom:8px;">▲ MATCH MVP</div>
+            <div style="font-family:'Orbitron',sans-serif; font-size:26px; font-weight:900; color: var(--text);">{{ mvp.name }}</div>
+            <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
+              {% for d in mvp.details %}
+                <span style="font-family:'Share Tech Mono',monospace; font-size:9px; letter-spacing:1px; color:var(--gold); padding:3px 8px; border:1px solid rgba(255,215,0,0.3);">{{ d }}</span>
+              {% endfor %}
+            </div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-family:'Share Tech Mono',monospace; font-size:9px; letter-spacing:2px; color:var(--muted);">IMPACT SCORE</div>
+            <div style="font-family:'Orbitron',sans-serif; font-size:42px; font-weight:900; color:var(--gold); line-height:1;">{{ mvp.total }}</div>
+          </div>
+        </div>
+      </div>
+      {% endwith %}
+    {% endif %}
+
+    <div class="section-title">IMPACT LEADERBOARD</div>
+
+    <div class="impact-list">
+      {% for player in analysis.impact %}
+      <div class="impact-row {% if forloop.first %}mvp{% endif %}">
+        <div class="impact-rank">
+          {% if forloop.first %}★{% else %}{{ forloop.counter }}{% endif %}
+        </div>
+        <div class="impact-info">
+          <div class="impact-player-name">
+            {{ player.name }}
+            {% if forloop.first %}<span class="mvp-badge" style="margin-left:10px;">MVP</span>{% endif %}
+          </div>
+          <div class="impact-details">
+            {% for detail in player.details %}
+              <span class="impact-tag">{{ detail }}</span>
+            {% endfor %}
+          </div>
+        </div>
+        <div>
+          <div class="impact-score">{{ player.total }}</div>
+          <div style="font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--muted); text-align:right; margin-top:2px;">PTS</div>
+        </div>
+        <div class="causality-arrow"></div>
+      </div>
+      {% empty %}
+      <div style="padding:32px; text-align:center; color:var(--muted); font-family:'Share Tech Mono',monospace; font-size:11px; letter-spacing:2px;">NO IMPACT DATA RECORDED</div>
+      {% endfor %}
+    </div>
+
+  </section>
+
+  <!-- ────────────────────────── ZONE CONTROL -->
+  <section id="panel-zones" class="panel">
+
+    <div class="section-title">TERRITORIAL DOMINANCE</div>
+
+    <div class="zone-grid">
+      {% for zone in analysis.zones %}
+      <div class="zone-card">
+        <div class="zone-name">{{ zone.name|upper }} ZONE</div>
+        <div class="zone-winner"
+          style="color: {% if zone.winner == match_state.home_team.name %}var(--home){% else %}var(--away){% endif %};">
+          {{ zone.winner }}
+        </div>
+        <div class="zone-margin">+{{ zone.margin }} actions</div>
+      </div>
+      {% empty %}
+      <div style="grid-column: 1/-1; padding:32px; text-align:center; color:var(--muted); font-family:'Share Tech Mono',monospace; font-size:11px; letter-spacing:2px;">NO ZONE DATA AVAILABLE</div>
+      {% endfor %}
+    </div>
+
+    {% if stats.break_timestamps %}
+    <div class="section-title">PRESSURE MAP — BREAKS</div>
+    <div class="pressure-map">
+      <div style="font-family:'Share Tech Mono',monospace; font-size:9px; letter-spacing:2px; color:var(--muted); margin-bottom:12px;">TACTICAL BREAK TIMELINE</div>
+      <div class="pressure-track" id="pressureTrack">
+        <!-- Markers injected via JS -->
+      </div>
+      <div class="pressure-ruler">
+        <span>0'</span>
+        <span>{% if match_state.mode == "5v5" %}20'{% else %}22'{% endif %}</span>
+        <span>{% if match_state.mode == "5v5" %}40'{% else %}45'{% endif %}</span>
+        <span>{% if match_state.mode == "11v11" %}67'{% endif %}</span>
+        <span>{% if match_state.mode == "5v5" %}40' FT{% else %}90' FT{% endif %}</span>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Zone Breakdown Chart -->
+    <div class="section-title">ZONE ACTION DISTRIBUTION</div>
+    <div class="chart-container">
+      <canvas id="zoneChart" height="120"></canvas>
+    </div>
+
+  </section>
+
+  <!-- ────────────────────────── INTEGRITY -->
+  {# ============================================================ #}
+{# PHASE A: ZONE INTEGRITY BREAKDOWN                           #}
+{# Add this block inside #panel-integrity in match_report.html #}
+{# Place it AFTER the existing "FINAL STRUCTURAL STATE" section #}
+{# ============================================================ #}
+
+<div class="section-title" style="margin-top: 28px;">ZONE INTEGRITY BREAKDOWN</div>
+
+<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 28px;">
+  {% for zone in analysis.zone_breakdown %}
+  <div style="background: var(--surface); border: 1px solid var(--border); padding: 18px; position: relative; overflow: hidden;">
+
+    {# Zone name header #}
+    <div style="font-family:'Orbitron',sans-serif; font-size:10px; letter-spacing:3px; color:var(--muted); margin-bottom:14px; text-align:center;">
+      {{ zone.zone|upper }}
+    </div>
+
+    {# HOME zone bar #}
+    <div style="margin-bottom: 10px;">
+      <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+        <span style="font-family:'Share Tech Mono',monospace; font-size:9px; letter-spacing:1px; color:var(--home);">HOME</span>
+        <span style="font-family:'Orbitron',sans-serif; font-size:13px; font-weight:700;
+          color: {% if zone.home_state == 'collapsed' %}var(--danger)
+                 {% elif zone.home_state == 'broken' %}#ff8c00
+                 {% elif zone.home_state == 'stressed' %}var(--gold)
+                 {% else %}var(--success){% endif %};">
+          {{ zone.home_val }}%
+        </span>
+      </div>
+      <div style="height:4px; background:var(--border);">
+        <div style="height:100%; width:{{ zone.home_val }}%;
+          background: {% if zone.home_state == 'collapsed' %}var(--danger)
+                      {% elif zone.home_state == 'broken' %}#ff8c00
+                      {% elif zone.home_state == 'stressed' %}var(--gold)
+                      {% else %}var(--success){% endif %};
+          transition: width 1s ease;">
+        </div>
+      </div>
+    </div>
+
+    {# AWAY zone bar #}
+    <div>
+      <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+        <span style="font-family:'Share Tech Mono',monospace; font-size:9px; letter-spacing:1px; color:var(--away);">AWAY</span>
+        <span style="font-family:'Orbitron',sans-serif; font-size:13px; font-weight:700;
+          color: {% if zone.away_state == 'collapsed' %}var(--danger)
+                 {% elif zone.away_state == 'broken' %}#ff8c00
+                 {% elif zone.away_state == 'stressed' %}var(--gold)
+                 {% else %}var(--success){% endif %};">
+          {{ zone.away_val }}%
+        </span>
+      </div>
+      <div style="height:4px; background:var(--border);">
+        <div style="height:100%; width:{{ zone.away_val }}%;
+          background: {% if zone.away_state == 'collapsed' %}var(--danger)
+                      {% elif zone.away_state == 'broken' %}#ff8c00
+                      {% elif zone.away_state == 'stressed' %}var(--gold)
+                      {% else %}var(--success){% endif %};
+          transition: width 1.2s ease;">
+        </div>
+      </div>
+    </div>
+
+    {# Exploitation badge — marks the weaker zone #}
+    {% if zone.home_worse %}
+    <div style="position:absolute; top:8px; right:8px;
+      font-family:'Share Tech Mono',monospace; font-size:8px; letter-spacing:1px;
+      padding:2px 6px; background:rgba(255,59,59,0.15); border:1px solid var(--danger); color:var(--danger);">
+      EXPLOITED
+    </div>
+    {% elif zone.away_val < zone.home_val %}
+    <div style="position:absolute; top:8px; right:8px;
+      font-family:'Share Tech Mono',monospace; font-size:8px; letter-spacing:1px;
+      padding:2px 6px; background:rgba(255,59,59,0.15); border:1px solid var(--danger); color:var(--danger);">
+      EXPLOITED
+    </div>
+    {% endif %}
+
+  </div>
+  {% endfor %}
+</div>
+
+  <!-- ────────────────────────── SYSTEM ANALYSIS -->
+  <section id="panel-analysis" class="panel">
+
+    <div class="section-title">RESULT ATTRIBUTION</div>
+    <div class="attribution-grid">
+      <div class="attr-card">
+        <div class="attr-label">SYSTEM INFLUENCE</div>
+        <div class="attr-value {{ analysis.attribution.system|lower }}">{{ analysis.attribution.system }}</div>
+      </div>
+      <div class="attr-card">
+        <div class="attr-label">VARIANCE FACTOR</div>
+        <div class="attr-value {{ analysis.attribution.variance|lower }}">{{ analysis.attribution.variance }}</div>
+      </div>
+    </div>
+
+    <div class="section-title">CAUSALITY CHAIN</div>
+    <div class="causality-chain">
+      {% for event in analysis.causality %}
+      <div class="causality-item">
+        <span class="causality-num">{{ forloop.counter|stringformat:"02d" }}</span>
+        <span>{{ event }}</span>
+        <div class="causality-arrow"></div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="section-title">MACRO SLIDERS — HOME SETUP</div>
+    <div class="stat-grid">
+      <div class="stat-card"><div class="stat-label">TEMPO</div><div class="stat-value">{{ stats.h_tempo }}</div><div class="stat-sub">out of 5</div></div>
+      <div class="stat-card"><div class="stat-label">PRESS</div><div class="stat-value">{{ stats.h_press }}</div><div class="stat-sub">out of 5</div></div>
+      <div class="stat-card"><div class="stat-label">RISK</div><div class="stat-value">{{ stats.h_risk }}</div><div class="stat-sub">out of 5</div></div>
+      <div class="stat-card"><div class="stat-label">DEPTH</div><div class="stat-value">{{ stats.h_depth }}</div><div class="stat-sub">out of 5</div></div>
+    </div>
+
+    <div class="section-title" style="margin-top:20px;">MACRO SLIDERS — AWAY SETUP</div>
+    <div class="stat-grid">
+      <div class="stat-card"><div class="stat-label">TEMPO</div><div class="stat-value">{{ stats.a_tempo }}</div><div class="stat-sub">out of 5</div></div>
+      <div class="stat-card"><div class="stat-label">PRESS</div><div class="stat-value">{{ stats.a_press }}</div><div class="stat-sub">out of 5</div></div>
+      <div class="stat-card"><div class="stat-label">RISK</div><div class="stat-value">{{ stats.a_risk }}</div><div class="stat-sub">out of 5</div></div>
+      <div class="stat-card"><div class="stat-label">DEPTH</div><div class="stat-value">{{ stats.a_depth }}</div><div class="stat-sub">out of 5</div></div>
+    </div>
+
+  </section>
+
+</main>
+
+<!-- ═══════════════════════════════════════ ACTION BAR -->
+<div class="action-bar">
+  <div class="match-id-label">MATCH_ID: {{ match_state.id }} // {{ match_state.date_played|date:"Y-m-d H:i" }}</div>
+  <div class="btn-group">
+    <a href="{% url 'tactical_lab' %}" class="btn btn-ghost">← NEW MATCH</a>
+    <a href="{% url 'match_execution' %}" class="btn btn-primary" onclick="return confirmReplay()">REPLAY ↻</a>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ SCRIPTS -->
+<script>
+  // ─── DATA FROM DJANGO ───────────────────────────
+  const HOME_PCT    = {{ stats.home_possession_pct }};
+  const H_INT_FINAL = {{ stats.home_integrity_final }};
+  const A_INT_FINAL = {{ stats.away_integrity_final }};
+  const MAX_MIN     = "{{ match_state.mode }}" === "11v11" ? 90 : 40;
+
+  const TIMELINE = {{ analysis.timeline|safe }};
+  const BREAKS   = {{ stats.break_timestamps|default:"[]"|safe }};
+  const ZONE_CTRL = {{ stats.zone_control|safe }};
+
+  // ─── TAB SWITCHER ───────────────────────────────
+  function switchTab(el, panelId) {
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById('panel-' + panelId).classList.add('active');
+  }
+
+  // ─── BOOT ANIMATIONS ───────────────────────────
+  window.addEventListener('DOMContentLoaded', () => {
+
+    // Possession bar
+    setTimeout(() => {
+      const pf = document.getElementById('possFill');
+      if (pf) pf.style.width = HOME_PCT + '%';
+    }, 300);
+
+    // Integrity bars
+    setTimeout(() => {
+      const h = document.getElementById('hIntBar');
+      const a = document.getElementById('aIntBar');
+      if (h) h.style.width = H_INT_FINAL + '%';
+      if (a) a.style.width = A_INT_FINAL + '%';
+    }, 400);
+
+    // Pressure map
+    const track = document.getElementById('pressureTrack');
+    if (track && BREAKS.length) {
+      BREAKS.forEach(min => {
+        const pct = (min / MAX_MIN) * 100;
+        const marker = document.createElement('div');
+        marker.className = 'pressure-marker';
+        marker.style.left = pct + '%';
+        track.appendChild(marker);
+      });
+    }
+
+    // Integrity chart
+    buildIntegrityChart();
+    buildZoneChart();
+  });
+
+  // ─── INTEGRITY TIMELINE CHART ───────────────────
+  function buildIntegrityChart() {
+    const ctx = document.getElementById('integrityChart');
+    if (!ctx || !TIMELINE.length) return;
+
+    const labels = TIMELINE.map(t => t.min + "'");
+    const hData  = TIMELINE.map(t => t.h_struct);
+    const aData  = TIMELINE.map(t => t.a_struct);
+
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: 'Home',
+            data: hData,
+            borderColor: '#00e5ff',
+            backgroundColor: 'rgba(0,229,255,0.06)',
+            borderWidth: 2,
+            pointRadius: 3,
+            pointBackgroundColor: '#00e5ff',
+            tension: 0.3,
+            fill: true
+          },
+          {
+            label: 'Away',
+            data: aData,
+            borderColor: '#ff6b35',
+            backgroundColor: 'rgba(255,107,53,0.06)',
+            borderWidth: 2,
+            pointRadius: 3,
+            pointBackgroundColor: '#ff6b35',
+            tension: 0.3,
+            fill: true
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        animation: { duration: 800, easing: 'easeOutQuart' },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#0d1520',
+            borderColor: '#1a2a3a',
+            borderWidth: 1,
+            titleColor: '#c8d8e8',
+            bodyColor: '#4a6a7a',
+            titleFont: { family: 'Share Tech Mono', size: 10 },
+            bodyFont: { family: 'Share Tech Mono', size: 10 },
+            callbacks: {
+              label: ctx => `${ctx.dataset.label}: ${ctx.raw}%`
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { color: 'rgba(26,42,58,0.8)' },
+            ticks: { color: '#4a6a7a', font: { family: 'Share Tech Mono', size: 9 } }
+          },
+          y: {
+            min: 0, max: 100,
+            grid: { color: 'rgba(26,42,58,0.8)' },
+            ticks: {
+              color: '#4a6a7a',
+              font: { family: 'Share Tech Mono', size: 9 },
+              callback: v => v + '%'
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // ─── ZONE BAR CHART ─────────────────────────────
+  function buildZoneChart() {
+    const ctx = document.getElementById('zoneChart');
+    if (!ctx || !ZONE_CTRL) return;
+
+    const zones  = Object.keys(ZONE_CTRL);
+    const hVals  = zones.map(z => ZONE_CTRL[z].home  || 0);
+    const aVals  = zones.map(z => ZONE_CTRL[z].away  || 0);
+
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: zones.map(z => z.toUpperCase()),
+        datasets: [
+          {
+            label: 'Home',
+            data: hVals,
+            backgroundColor: 'rgba(0,229,255,0.5)',
+            borderColor: '#00e5ff',
+            borderWidth: 1
+          },
+          {
+            label: 'Away',
+            data: aVals,
+            backgroundColor: 'rgba(255,107,53,0.5)',
+            borderColor: '#ff6b35',
+            borderWidth: 1
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        animation: { duration: 700 },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#0d1520',
+            borderColor: '#1a2a3a',
+            borderWidth: 1,
+            titleColor: '#c8d8e8',
+            bodyColor: '#4a6a7a',
+            titleFont: { family: 'Share Tech Mono', size: 10 },
+            bodyFont: { family: 'Share Tech Mono', size: 10 }
+          }
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: { color: '#4a6a7a', font: { family: 'Share Tech Mono', size: 10 } }
+          },
+          y: {
+            grid: { color: 'rgba(26,42,58,0.8)' },
+            ticks: { color: '#4a6a7a', font: { family: 'Share Tech Mono', size: 10 } }
+          }
+        }
+      }
+    });
+  }
+
+  // ─── REPLAY CONFIRM ─────────────────────────────
+  function confirmReplay() {
+    return confirm('Replay this exact match configuration with a new seed?');
+  }
+</script>
 
 </body>
 </html>

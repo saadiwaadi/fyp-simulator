@@ -1,4 +1,9 @@
-// --- 0. DATA: TACTICAL INSTRUCTIONS ---
+// --- 0. STATE MEMORY & DATA ---
+let savedLineups = {}; // Memory Bank for switching teams without overlapping
+let currentViewingTeam = null;
+
+let tacticalMemory = { '5v5': {}, '11v11': {} };
+
 const TACTICAL_MENUS = {
     'GK': [ { val: 'Standard', name: 'Traditional' }, { val: 'Sweeper Keeper', name: 'Sweeper Keeper (Risk)' }, { val: 'Cross Claimer', name: 'Cross Claimer' } ],
     'DEF_C': [ { val: 'Stay Back', name: 'Stay Back' }, { val: 'Ball Playing', name: 'Ball Playing Def' }, { val: 'Aggressive', name: 'Step Up' }, { val: 'Play as Striker', name: 'Join Attack (Late)' } ],
@@ -33,9 +38,28 @@ const ROLE_WEIGHTS = {
     'Come Back': { 'sta':4, 'def':3 }
 };
 
-let tacticalMemory = { '5v5': {}, '11v11': {} };
+// --- NEW FIX: BENCH SORTER ---
+function sortBench() {
+    const bench = document.getElementById('bench');
+    // Grab all cards currently in the bench
+    const cards = Array.from(bench.querySelectorAll('.card'));
+    
+    // Define the strict visual order
+    const roleOrder = { 'GK': 1, 'DEF': 2, 'MID': 3, 'FWD': 4 };
+    
+    // Sort the cards based on their role
+    cards.sort((a, b) => {
+        let roleA = a.getAttribute('data-role');
+        let roleB = b.getAttribute('data-role');
+        return (roleOrder[roleA] || 5) - (roleOrder[roleB] || 5);
+    });
+    
+    // Append them back in the correct order
+    cards.forEach(card => bench.appendChild(card));
+}
 
-// --- LOGIC FUNCTIONS (Copy Paste your previous Logic here) ---
+
+// --- LOGIC FUNCTIONS ---
 function changeMode(newMode) {
     const pitch = document.getElementById('pitch');
     const currentMode = pitch.classList.contains('mode-5v5') ? '5v5' : '11v11';
@@ -58,6 +82,8 @@ function changeMode(newMode) {
         const c = document.getElementById(cid); const s = document.getElementById(sid);
         if (c && s) { s.appendChild(c); c.classList.add('deployed'); }
     }
+    
+    sortBench(); // Ensure bench remains tidy after a mode swap
 }
 
 function allowDrop(ev) { ev.preventDefault(); ev.currentTarget.classList.add('drag-over'); }
@@ -71,10 +97,17 @@ function drop(ev) {
         if (slot.getAttribute('data-zone') === 'GK' && card.getAttribute('data-role') !== 'GK') {
             alert("TACTICAL ERROR: ONLY SPECIALIST GOALKEEPERS CAN BE DEPLOYED IN THIS SLOT."); return; 
         }
+        
         let existing = slot.querySelector('.card');
         if (existing && existing.id !== card.id) {
-            document.getElementById('bench').appendChild(existing); existing.classList.remove('deployed');
+            // Send existing player to bench and remove deployment status
+            document.getElementById('bench').appendChild(existing); 
+            existing.classList.remove('deployed');
+            
+            // Re-sort the bench immediately so it doesn't shuffle!
+            sortBench(); 
         }
+        
         slot.appendChild(card); card.classList.add('deployed');
         let mode = document.getElementById('form-mode').value;
         tacticalMemory[mode][card.id] = slot.id;
@@ -84,6 +117,7 @@ function drop(ev) {
 
 function inspectPlayer(pid) {
     let card = document.getElementById('p-' + pid);
+    if (!card) return;
     let role = card.getAttribute('data-role');
     let slot = card.parentElement;
     let zone = slot.getAttribute('data-zone');
@@ -173,7 +207,7 @@ function recalcFit() {
         'sho': parseInt(card.getAttribute('data-sho')),
         'def': parseInt(card.getAttribute('data-def'))
     };
-    s['pas'] = Math.round((s.sho + s.def + s.spd)/3); // Proxy for passing
+    s['pas'] = Math.round((s.sho + s.def + s.spd)/3); 
 
     let score = 0, max = 0;
     for (const [k, w] of Object.entries(weights)) {
@@ -216,24 +250,21 @@ function switchTab(n) {
     event.currentTarget.classList.add('active'); document.getElementById('view-'+n).classList.add('active');
 }
 
-// --- UPDATED EXECUTION (Uses Window Data) ---
+function addHidden(p, n, v) { let i = document.createElement('input'); i.type='hidden'; i.name=n; i.value=v; p.appendChild(i); }
+
+// --- FIXED EXECUTE FUNCTION ---
 function executeMission() {
-    // ... (Your existing validation checks) ...
-
-    // SHOW LOADER
-    document.getElementById('loader').style.display = 'flex';
-
-    // Submit after a tiny delay to allow the UI to repaint
-    setTimeout(() => {
-        document.getElementById('exe-form').submit();
-    }, 50);
-}    
-    let container = document.getElementById('form-data'); container.innerHTML = "";
+    let container = document.getElementById('form-data'); 
+    if(container) container.innerHTML = "";
+    
     let cards = document.querySelectorAll('.card.deployed');
     let mode = document.getElementById('form-mode').value;
     let req = (mode === '5v5') ? 5 : 11;
 
-    if(cards.length < req) { alert(`SQUAD UNDERSTRENGTH. ${mode} REQUIRES ${req}.`); return; }
+    if(cards.length < req) { 
+        alert(`SQUAD UNDERSTRENGTH. ${mode} REQUIRES ${req}.`); 
+        return; 
+    }
 
     cards.forEach(c => {
         let pid = c.getAttribute('data-id');
@@ -243,11 +274,16 @@ function executeMission() {
         addHidden(container, `instruction_${pid}`, c.getAttribute('data-instr')||"");
         addHidden(container, `set_piece_${pid}`, c.getAttribute('data-sp')||"");
     });
-    document.getElementById('exe-form').submit();
+    
+    let loader = document.getElementById('loader');
+    if(loader) loader.style.display = 'flex';
+
+    setTimeout(() => {
+        document.getElementById('exe-form').submit();
+    }, 50);
 }
 
-function addHidden(p, n, v) { let i = document.createElement('input'); i.type='hidden'; i.name=n; i.value=v; p.appendChild(i); }
-
+// --- INITIAL LOAD ---
 window.onload = function() {
     let cards = document.querySelectorAll('.card');
     cards.forEach(c => {
@@ -257,4 +293,5 @@ window.onload = function() {
             if(s) { s.appendChild(c); c.classList.add('deployed'); tacticalMemory['5v5'][c.id] = s.id; }
         }
     });
+    sortBench(); // Ensure bench is sorted perfectly on first load
 };

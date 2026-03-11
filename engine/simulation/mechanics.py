@@ -122,9 +122,9 @@ def resolve_finish(striker, gk, att_mult, integrity_bonus, minute):
 
     # Asymmetric rolls (striker explosive, GK reliable)
     att_roll = att_val + final_bonus + random.randint(-18, 18)
-    def_roll = def_val + random.randint(-5, 25)
+    def_roll = def_val + random.randint(-5, 15)
 
-    if att_roll > (def_roll + 10):
+    if att_roll > (def_roll + 5):
         return 'GOAL'
     elif att_roll > def_roll:
         return 'SAVE'

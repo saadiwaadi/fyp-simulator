@@ -1,0 +1,222 @@
+{
+  "Max Chaos": {
+    "agg": {
+      "n": 100,
+      "goals_mean": 1.03,
+      "goals_std": 1.067944310582275,
+      "goals_min": 0,
+      "goals_max": 4,
+      "blank_rate": 0.41,
+      "home_win_rate": 0.14,
+      "away_win_rate": 0.28,
+      "draw_rate": 0.58,
+      "break_rate_mean": 0.133,
+      "struct_breach_rate": 0.0,
+      "struct_breach_min_mean": null,
+      "fatigue_breach_rate": 1.0,
+      "fatigue_breach_min_mean": 14.88,
+      "avg_h_integrity": 98.85,
+      "avg_a_integrity": 98.88,
+      "density_mean": 2.74
+    },
+    "crashes": 0
+  },
+  "Park the Bus": {
+    "agg": {
+      "n": 100,
+      "goals_mean": 5.6,
+      "goals_std": 2.3783535600422527,
+      "goals_min": 0,
+      "goals_max": 12,
+      "blank_rate": 0.02,
+      "home_win_rate": 0.29,
+      "away_win_rate": 0.29,
+      "draw_rate": 0.42,
+      "break_rate_mean": 0.648,
+      "struct_breach_rate": 0.0,
+      "struct_breach_min_mean": null,
+      "fatigue_breach_rate": 0.99,
+      "fatigue_breach_min_mean": 37.94949494949495,
+      "avg_h_integrity": 97.04,
+      "avg_a_integrity": 97.07,
+      "density_mean": 0.64
+    },
+    "crashes": 0
+  },
+  "Counter Exploit": {
+    "agg": {
+      "n": 100,
+      "goals_mean": 13.06,
+      "goals_std": 3.2186953878862163,
+      "goals_min": 4,
+      "goals_max": 22,
+      "blank_rate": 0.0,
+      "home_win_rate": 0.94,
+      "away_win_rate": 0.01,
+      "draw_rate": 0.05,
+      "break_rate_mean": 0.521,
+      "struct_breach_rate": 0.0,
+      "struct_breach_min_mean": null,
+      "fatigue_breach_rate": 1.0,
+      "fatigue_breach_min_mean": 15.45,
+      "avg_h_integrity": 99.35,
+      "avg_a_integrity": 98.32,
+      "density_mean": 1.78
+    },
+    "crashes": 0
+  },
+  "Tiki Breakdown": {
+    "agg": {
+      "n": 100,
+      "goals_mean": 19.48,
+      "goals_std": 3.1860808387596053,
+      "goals_min": 12,
+      "goals_max": 28,
+      "blank_rate": 0.0,
+      "home_win_rate": 0.96,
+      "away_win_rate": 0.01,
+      "draw_rate": 0.03,
+      "break_rate_mean": 0.64175,
+      "struct_breach_rate": 0.0,
+      "struct_breach_min_mean": null,
+      "fatigue_breach_rate": 1.0,
+      "fatigue_breach_min_mean": 13.02,
+      "avg_h_integrity": 98.98,
+      "avg_a_integrity": 98.76,
+      "density_mean": 1.93
+    },
+    "crashes": 0
+  },
+  "Aligned Fit": {
+    "agg": {
+      "n": 100,
+      "goals_mean": 14.95,
+      "goals_std": 2.5480235953429164,
+      "goals_min": 10,
+      "goals_max": 21,
+      "blank_rate": 0.0,
+      "home_win_rate": 1.0,
+      "away_win_rate": 0.0,
+      "draw_rate": 0.0,
+      "break_rate_mean": 0.52475,
+      "struct_breach_rate": 0.0,
+      "struct_breach_min_mean": null,
+      "fatigue_breach_rate": 1.0,
+      "fatigue_breach_min_mean": 10,
+      "avg_h_integrity": 99.55,
+      "avg_a_integrity": 97.03,
+      "density_mean": 0.83
+    },
+    "crashes": 0
+  },
+  "Misaligned Fit": {
+    "agg": {
+      "n": 100,
+      "goals_mean": 14.56,
+      "goals_std": 2.9035679896821893,
+      "goals_min": 6,
+      "goals_max": 22,
+      "blank_rate": 0.0,
+      "home_win_rate": 0.0,
+      "away_win_rate": 1.0,
+      "draw_rate": 0.0,
+      "break_rate_mean": 0.50875,
+      "struct_breach_rate": 0.0,
+      "struct_breach_min_mean": null,
+      "fatigue_breach_rate": 1.0,
+      "fatigue_breach_min_mean": 10.01,
+      "avg_h_integrity": 97.24,
+      "avg_a_integrity": 99.53,
+      "density_mean": 1.1
+    },
+    "crashes": 0
+  },
+  "Natural Positions": {
+    "agg": {
+      "n": 100,
+      "goals_mean": 3.19,
+      "goals_std": 1.8946762203073062,
+      "goals_min": 0,
+      "goals_max": 8,
+      "blank_rate": 0.1,
+      "home_win_rate": 0.42,
+      "away_win_rate": 0.08,
+      "draw_rate": 0.5,
+      "break_rate_mean": 0.378,
+      "struct_breach_rate": 0.0,
+      "struct_breach_min_mean": null,
+      "fatigue_breach_rate": 1.0,
+      "fatigue_breach_min_mean": 27.36,
+      "avg_h_integrity": 98.08,
+      "avg_a_integrity": 98.13,
+      "density_mean": 0.91
+    },
+    "crashes": 0
+  },
+  "Wrong Positions": {
+    "agg": {
+      "n": 100,
+      "goals_mean": 3.12,
+      "goals_std": 1.7249213128005392,
+      "goals_min": 0,
+      "goals_max": 7,
+      "blank_rate": 0.05,
+      "home_win_rate": 0.5,
+      "away_win_rate": 0.09,
+      "draw_rate": 0.41,
+      "break_rate_mean": 0.35225,
+      "struct_breach_rate": 0.0,
+      "struct_breach_min_mean": null,
+      "fatigue_breach_rate": 1.0,
+      "fatigue_breach_min_mean": 27.37,
+      "avg_h_integrity": 98.32,
+      "avg_a_integrity": 98.13,
+      "density_mean": 0.91
+    },
+    "crashes": 0
+  },
+  "Elite vs Weak": {
+    "agg": {
+      "n": 100,
+      "goals_mean": 6.93,
+      "goals_std": 2.2663769868370633,
+      "goals_min": 2,
+      "goals_max": 12,
+      "blank_rate": 0.0,
+      "home_win_rate": 1.0,
+      "away_win_rate": 0.0,
+      "draw_rate": 0.0,
+      "break_rate_mean": 0.4925,
+      "struct_breach_rate": 0.0,
+      "struct_breach_min_mean": null,
+      "fatigue_breach_rate": 1.0,
+      "fatigue_breach_min_mean": 19.97,
+      "avg_h_integrity": 99.6,
+      "avg_a_integrity": 96.62,
+      "density_mean": 1.09
+    },
+    "crashes": 0
+  },
+  "Mirror Balanced": {
+    "agg": {
+      "n": 100,
+      "goals_mean": 2.31,
+      "goals_std": 1.8946762203073062,
+      "goals_min": 0,
+      "goals_max": 8,
+      "blank_rate": 0.2,
+      "home_win_rate": 0.24,
+      "away_win_rate": 0.22,
+      "draw_rate": 0.54,
+      "break_rate_mean": 0.46625,
+      "struct_breach_rate": 0.0,
+      "struct_breach_min_mean": null,
+      "fatigue_breach_rate": 1.0,
+      "fatigue_breach_min_mean": 26.05,
+      "avg_h_integrity": 96.95,
+      "avg_a_integrity": 96.9,
+      "density_mean": 1
+    },
+    "crashes": 0
+  }
+}

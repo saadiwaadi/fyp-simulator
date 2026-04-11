@@ -1,309 +1,668 @@
 {% load static %}
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>TACTICAL TERMINAL // RESCUE_MODE</title>
-    <style>
-        /* --- 1. VISUAL CORE (Black & Neon) --- */
-        :root {
-            --bg-color: #050505;
-            --panel-bg: #0a0a0a;
-            --text-main: #cccccc;
-            --text-dim: #666666;
-            --border: #333333;
-            --green: #00ff41;
-            --red: #ff3333;
-            --blue: #00ccff;
-            --yellow: #ffd700;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TACTICAL LAB // DASHBOARD</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Press+Start+2P&display=swap');
 
-        body {
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            font-family: 'Courier New', monospace;
-            padding: 20px; margin: 0; font-size: 14px;
-        }
+    :root {
+      --bg: #0A0A0A;
+      --surface: #141414;
+      --surface-2: #1C1C1C;
+      --text: #FFFFFF;
+      --text-dim: #8A8A8A;
+      --accent: #B11226;
+      --heading-font: 'Neue Haas Grotesk Display Pro', 'Inter', 'Helvetica Neue', 'Arial', sans-serif;
+    }
 
-        /* --- 2. LAYOUT --- */
-        .container { display: grid; grid-template-columns: 65% 33%; gap: 2%; height: 85vh; }
-        .header { border-bottom: 1px solid var(--border); padding-bottom: 15px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
-        h1 { margin: 0; font-size: 18px; letter-spacing: 2px; color: var(--text-main); }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
 
-        /* --- 3. COMPONENTS --- */
-        .log-box { background: var(--bg-color); border: 1px solid var(--border); height: 100%; overflow-y: auto; padding: 15px; }
-        .line { display: none; margin-bottom: 6px; border-bottom: 1px solid #111; padding-bottom: 2px; }
-        .ts { color: var(--text-dim); margin-right: 10px; font-size: 11px; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      overflow-x: hidden;
+    }
 
-        /* Event Colors */
-        .evt-goal { color: var(--green); font-weight: bold; text-shadow: 0 0 5px rgba(0,255,65,0.5); }
-        .evt-miss { color: var(--red); }
-        .evt-save { color: var(--yellow); }
-        .evt-tactic { color: var(--blue); }
-        .evt-phase { color: #d8b4fe; border-top: 1px dashed #333; margin-top: 10px; padding-top: 5px; display: block; }
-        
-        /* --- 4. CONTROLS --- */
-        .stats-box { background: var(--panel-bg); border: 1px solid var(--border); display: flex; flex-direction: column; height: 100%; }
-        .tab-container { display: flex; border-bottom: 1px solid var(--border); background: #000; }
-        .tab-btn { flex: 1; background: transparent; color: var(--text-dim); border: none; padding: 15px; cursor: pointer; font-weight: bold; }
-        .tab-btn:hover { color: var(--text-main); background: #111; }
-        .tab-btn.active { color: var(--green); border-bottom: 2px solid var(--green); background: #081108; }
-        .tab-content { display: none; padding: 20px; height: 100%; overflow-y: auto; }
-        .tab-content.active { display: block; }
+    .landing-container {
+      display: block;
+      min-height: 100vh;
+      overflow-x: hidden;
+      overflow-y: auto;
+    }
 
-        /* --- 5. INPUTS --- */
-        select, button { background: #000; color: var(--text-main); border: 1px solid var(--border); padding: 8px 12px; cursor: pointer; text-transform: uppercase; font-family: inherit; }
-        button:hover { border-color: var(--green); color: var(--green); }
-        
-        .squad-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-        .squad-table td { padding: 8px 0; border-bottom: 1px solid #1a1a1a; }
-        .zone-pill { background: #000; color: var(--blue); border: 1px solid var(--blue); padding: 2px 5px; font-size: 10px; }
-        
-        /* UTILS */
-        .blur { filter: blur(5px); transition: filter 0.5s; }
-        .reveal { filter: none; }
-    </style>
+    .beta-test-0 {
+      --scroll-progress: 0;
+      --nav-progress: 0;
+      --title-progress: 0;
+      --subtitle-progress: 0;
+      --pitch-progress: 0;
+      min-height: 100vh;
+      background: #0A0A0A;
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-variant-numeric: tabular-nums;
+      position: relative;
+      overflow: visible;
+      isolation: isolate;
+      z-index: 1;
+    }
+
+    .beta-test-0 h1,
+    .beta-test-0 h2,
+    .beta-test-0 h3 {
+      font-family: var(--heading-font);
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+
+    .pin-container {
+      width: 100%;
+      min-height: 220svh;
+      overflow: visible;
+      position: relative;
+      z-index: 1;
+    }
+
+    .panel {
+      position: relative;
+      width: 100%;
+      min-height: 100vh;
+    }
+
+    .panel-one {
+      position: sticky;
+      top: 0;
+      min-height: 100svh;
+      overflow: hidden;
+      z-index: 1;
+    }
+
+    .scroll-tracker {
+      position: fixed;
+      top: 50%;
+      right: clamp(8px, 1.3vw, 16px);
+      transform: translateY(-50%);
+      width: 3px;
+      height: clamp(86px, 16vh, 140px);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.13);
+      z-index: 6;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    .scroll-tracker-fill {
+      display: block;
+      width: 100%;
+      height: 100%;
+      transform-origin: top center;
+      transform: scaleY(var(--scroll-progress));
+      background: linear-gradient(180deg, #ff764f 0%, #c22033 55%, #b11226 100%);
+      box-shadow: 0 0 9px rgba(177, 18, 38, 0.5);
+    }
+
+    .faint-blob-layer {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .faint-blob {
+      position: absolute;
+      width: 360px;
+      height: 260px;
+      border-radius: 50%;
+      filter: blur(120px);
+      opacity: 0.1;
+    }
+
+    .fblob-a {
+      top: 8%; left: 5%;
+      background: radial-gradient(circle, rgba(177, 18, 38, 0.07), transparent 72%);
+      animation: widthDriftForward 42s linear infinite;
+    }
+    .fblob-b {
+      top: 20%; right: 6%;
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.04), transparent 72%);
+      animation: widthDriftReverse 48s linear infinite;
+    }
+    .fblob-c {
+      bottom: 18%; left: 12%;
+      background: radial-gradient(circle, rgba(177, 18, 38, 0.06), transparent 72%);
+      animation: widthDriftForward 54s linear infinite;
+    }
+    .fblob-d {
+      bottom: 6%; right: 12%;
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.035), transparent 72%);
+      animation: widthDriftReverse 58s linear infinite;
+    }
+
+    .speck-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 1;
+      transform: translateY(10px);
+      opacity: calc(1 - (0.55 * var(--scroll-progress)));
+    }
+
+    .speck {
+      position: absolute;
+      bottom: -12vh;
+      width: 2px;
+      height: 2px;
+      border-radius: 50%;
+      background: rgba(177, 18, 38, 0.9);
+      box-shadow: 0 0 4px rgba(177, 18, 38, 0.4);
+      opacity: 0;
+      transform: translate3d(0, 0, 0) scale(0.7);
+      will-change: transform, opacity;
+      animation: speckMorph calc(var(--morph-dur, 18s) * 1.4) linear var(--morph-delay, 0s) infinite;
+    }
+
+    @keyframes speckMorph {
+      0% { transform: translate3d(0px, 0px, 0px) scale(var(--start-scale, 0.55)); opacity: 0; }
+      10% { transform: translate3d(var(--sway-x, 8px), calc(-0.10 * var(--rise-dist, 100vh)), 0px) scale(calc(var(--start-scale, 0.55) + 0.08)); opacity: 0.45; }
+      24% { transform: translate3d(calc(var(--sway-x, 8px) * -0.8), calc(-0.24 * var(--rise-dist, 100vh)), 0px) scale(calc(var(--mid-scale, 1) - 0.04)); opacity: 0.62; }
+      38% { transform: translate3d(calc(var(--sway-x, 8px) * 0.9), calc(-0.38 * var(--rise-dist, 100vh)), 0px) scale(calc(var(--mid-scale, 1) + 0.02)); opacity: 0.78; }
+      54% { transform: translate3d(calc(var(--sway-x, 8px) * -0.65), calc(-0.54 * var(--rise-dist, 100vh)), 0px) scale(calc(var(--mid-scale, 1) + 0.08)); opacity: 0.88; }
+      70% { transform: translate3d(calc(var(--sway-x, 8px) * 0.6), calc(-0.70 * var(--rise-dist, 100vh)), 0px) scale(calc(var(--mid-scale, 1) + 0.13)); opacity: 0.98; }
+      86% { transform: translate3d(calc(var(--sway-x, 8px) * -0.35), calc(-0.86 * var(--rise-dist, 100vh)), 0px) scale(calc(var(--end-scale, 1.2) - 0.03)); opacity: 0.74; }
+      100% { transform: translate3d(var(--drift-x, 0px), calc(-1 * var(--rise-dist, 100vh)), 0px) scale(var(--end-scale, 1.2)); opacity: 0; }
+    }
+
+    /* Left cluster */
+    .s1 { bottom: -8vh; left: 8%; --morph-dur: 16s; --morph-delay: -4s; --rise-dist: 126vh; --sway-x: 7px; --drift-x: 5px; --start-scale: 0.55; --mid-scale: 0.95; --end-scale: 1.2; }
+    .s2 { bottom: -11vh; left: 12%; --morph-dur: 20s; --morph-delay: -11s; --rise-dist: 130vh; --sway-x: 10px; --drift-x: -3px; --start-scale: 0.5; --mid-scale: 1.05; --end-scale: 1.28; }
+    .s3 { bottom: -9vh; left: 6%; --morph-dur: 14s; --morph-delay: -7s; --rise-dist: 124vh; --sway-x: 6px; --drift-x: 8px; --start-scale: 0.6; --mid-scale: 0.98; --end-scale: 1.18; }
+    .s4 { bottom: -13vh; left: 16%; --morph-dur: 22s; --morph-delay: -3s; --rise-dist: 128vh; --sway-x: 14px; --drift-x: 4px; --start-scale: 0.52; --mid-scale: 1.08; --end-scale: 1.3; }
+    .s5 { bottom: -10vh; left: 18%; --morph-dur: 17s; --morph-delay: -9s; --rise-dist: 132vh; --sway-x: 9px; --drift-x: -6px; --start-scale: 0.58; --mid-scale: 1; --end-scale: 1.22; }
+    .s6 { bottom: -14vh; left: 9%; --morph-dur: 25s; --morph-delay: -15s; --rise-dist: 127vh; --sway-x: 12px; --drift-x: 3px; --start-scale: 0.5; --mid-scale: 1.02; --end-scale: 1.24; }
+    .s7 { bottom: -8vh; left: 22%; --morph-dur: 19s; --morph-delay: -6s; --rise-dist: 129vh; --sway-x: 8px; --drift-x: -4px; --start-scale: 0.56; --mid-scale: 0.96; --end-scale: 1.2; }
+    .s8 { bottom: -12vh; left: 26%; --morph-dur: 15s; --morph-delay: -12s; --rise-dist: 125vh; --sway-x: 5px; --drift-x: 7px; --start-scale: 0.62; --mid-scale: 0.92; --end-scale: 1.15; }
+
+    /* Scattered right */
+    .s9 { bottom: -9vh; left: 72%; --morph-dur: 21s; --morph-delay: -8s; --rise-dist: 131vh; --sway-x: 11px; --drift-x: -5px; --start-scale: 0.48; --mid-scale: 1.06; --end-scale: 1.3; }
+    .s10 { bottom: -8vh; left: 86%; --morph-dur: 18s; --morph-delay: -2s; --rise-dist: 126vh; --sway-x: 8px; --drift-x: 6px; --start-scale: 0.54; --mid-scale: 0.98; --end-scale: 1.18; }
+    .s11 { bottom: -14vh; left: 82%; --morph-dur: 23s; --morph-delay: -14s; --rise-dist: 133vh; --sway-x: 15px; --drift-x: -2px; --start-scale: 0.5; --mid-scale: 1.1; --end-scale: 1.32; }
+    .s12 { bottom: -11vh; left: 68%; --morph-dur: 16s; --morph-delay: -5s; --rise-dist: 124vh; --sway-x: 7px; --drift-x: 9px; --start-scale: 0.6; --mid-scale: 0.94; --end-scale: 1.16; }
+    .s13 { bottom: -10vh; left: 90%; --morph-dur: 20s; --morph-delay: -10s; --rise-dist: 129vh; --sway-x: 10px; --drift-x: -7px; --start-scale: 0.52; --mid-scale: 1.02; --end-scale: 1.24; }
+
+    /* Mid scattered */
+    .s14 { bottom: -12vh; left: 44%; --morph-dur: 24s; --morph-delay: -16s; --rise-dist: 132vh; --sway-x: 13px; --drift-x: 4px; --start-scale: 0.5; --mid-scale: 1.04; --end-scale: 1.28; }
+    .s15 { bottom: -9vh; left: 38%; --morph-dur: 17s; --morph-delay: -7s; --rise-dist: 125vh; --sway-x: 9px; --drift-x: -5px; --start-scale: 0.58; --mid-scale: 0.97; --end-scale: 1.2; }
+    .s16 { bottom: -13vh; left: 54%; --morph-dur: 19s; --morph-delay: -13s; --rise-dist: 130vh; --sway-x: 11px; --drift-x: 6px; --start-scale: 0.54; --mid-scale: 1; --end-scale: 1.22; }
+
+    .nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+      padding: 0 clamp(20px, 6vw, 80px);
+      font-family: 'Inter', sans-serif;
+      font-weight: 400;
+      font-size: 10px;
+      letter-spacing: 0.01em;
+      text-transform: uppercase;
+      position: absolute;
+      top: 40px;
+      left: 0;
+      z-index: 2;
+      transform: translateY(calc(-56px * var(--nav-progress)));
+      opacity: calc(1 - (1 * var(--nav-progress)));
+    }
+
+    .nav-logo {
+      display: inline-flex;
+      align-items: center;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 10px;
+      font-weight: 400;
+      letter-spacing: 0.03em;
+      line-height: 1.2;
+      min-height: 34px;
+      color: #f5f5f5;
+      text-transform: uppercase;
+    }
+
+    .panel-one .nav,
+    .panel-one .status-bar,
+    .panel-one .hero { z-index: 2; }
+
+    .nav-right { display: flex; align-items: center; }
+
+    .nav-glass {
+      display: flex;
+      align-items: center;
+      gap: 28px;
+      padding: 8px 22px;
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.04);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    .nav-glass span, .nav-glass a {
+      color: rgba(255, 255, 255, 0.85);
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      cursor: pointer;
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    .nav-glass span:hover, .nav-glass a:hover {
+      color: #ffffff;
+    }
+
+    .status-bar {
+      display: flex;
+      justify-content: center;
+      width: 100%;
+      gap: clamp(12px, 2.2vw, 28px);
+      font-family: 'Inter', sans-serif;
+      font-weight: 400;
+      font-size: 10px;
+      letter-spacing: 0.01em;
+      color: var(--text-dim);
+      padding: 0 clamp(20px, 5vw, 44px);
+      flex-wrap: wrap;
+      position: absolute;
+      top: 12px;
+      left: 0;
+      z-index: 2;
+    }
+
+    .status-bar span {
+      color: #c76774;
+      text-shadow: 0 0 2px rgba(177, 18, 38, 0.16), 0 0 6px rgba(177, 18, 38, 0.12);
+      animation: statusGlowPulse 3.8s ease-in-out infinite;
+    }
+    .status-bar span:nth-child(2) { animation-delay: 0.35s; }
+    .status-bar span:nth-child(3) { animation-delay: 0.7s; }
+    .status-bar span:nth-child(4) { animation-delay: 1.05s; }
+
+    .status-bar span.active {
+      color: #d8828e;
+      text-shadow: 0 0 3px rgba(177, 18, 38, 0.24), 0 0 9px rgba(177, 18, 38, 0.2);
+      animation-duration: 3.2s;
+    }
+
+    @keyframes statusGlowPulse {
+      0%, 100% { opacity: 0.84; text-shadow: 0 0 2px rgba(177, 18, 38, 0.14), 0 0 5px rgba(177, 18, 38, 0.1); }
+      50% { opacity: 1; text-shadow: 0 0 4px rgba(177, 18, 38, 0.28), 0 0 12px rgba(177, 18, 38, 0.22); }
+    }
+
+    .hero {
+      min-height: 100svh;
+      height: 100svh;
+      display: block;
+      text-align: center;
+      padding: 0 24px;
+      gap: 0;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero-text {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, calc(-50% - (24vh * var(--title-progress))));
+      width: 100%;
+      max-width: 980px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-top: 0;
+      opacity: 1;
+      will-change: transform, opacity;
+    }
+
+    .pinned-heading {
+      position: absolute;
+      top: 37px;
+      left: 50%;
+      transform: translateX(-50%) translateY(calc(14px * (1 - var(--title-progress))));
+      font-family: var(--heading-font);
+      font-size: clamp(28px, 3.8vw, 48px);
+      font-weight: 600;
+      letter-spacing: -0.015em;
+      color: #ffffff;
+      line-height: 1.06;
+      white-space: nowrap;
+      opacity: calc(0 + (1 * var(--title-progress)));
+      pointer-events: none;
+      z-index: 3;
+    }
+
+    .hero-text h1 {
+      font-family: var(--heading-font);
+      font-size: clamp(40px, 5.2vw, 72px);
+      line-height: 1.08;
+      max-width: 820px;
+      letter-spacing: -0.02em;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: clamp(8px, 1.6vh, 16px);
+      transform: scale(calc(1 - (0.26 * var(--title-progress))));
+      transform-origin: top center;
+    }
+
+    .hero-headline {
+      display: block;
+      white-space: nowrap;
+      color: #ffffff;
+      font-weight: 600;
+    }
+
+    .hero-text h1 > .hero-headline:first-child {
+      letter-spacing: -0.015em;
+      opacity: calc(1 - (1 * var(--title-progress)));
+      transform: translateY(calc(-22px * var(--title-progress))));
+    }
+    .hero-text h1 > .hero-headline:last-child {
+      opacity: calc(1 - (1 * var(--subtitle-progress)));
+      transform: translateY(calc(-24px * var(--subtitle-progress)));
+    }
+
+    .hero-text p {
+      margin-top: 18px;
+      font-family: 'Inter', sans-serif;
+      font-weight: 400;
+      font-size: 13px;
+      line-height: 1.6;
+      letter-spacing: 0.01em;
+      color: var(--text-dim);
+      max-width: 520px;
+      opacity: calc(0.65 - (0.65 * var(--subtitle-progress)));
+      text-align: center;
+    }
+
+    .cta {
+      margin-top: 24px;
+      display: flex;
+      justify-content: center;
+      opacity: calc(1 - (1 * var(--subtitle-progress)));
+      transform: translateY(calc(-16px * var(--subtitle-progress)));
+    }
+
+    .btn {
+      --fill-tx: -115%;
+      --fill-ty: 0%;
+      position: relative;
+      z-index: 0;
+      overflow: hidden;
+      isolation: isolate;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 14px 32px;
+      border: 1px solid rgba(177, 18, 38, 0.6);
+      background: transparent;
+      color: white;
+      cursor: pointer;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      font-family: inherit;
+      box-shadow: 0 0 8px rgba(177, 18, 38, 0.15), inset 0 0 8px rgba(177, 18, 38, 0.05);
+      transition: box-shadow 0.3s ease, border-color 0.3s ease;
+    }
+
+    .btn::before {
+      content: '';
+      position: absolute;
+      inset: -1px;
+      z-index: -1;
+      pointer-events: none;
+      background: radial-gradient(130% 100% at 20% 50%, rgba(255, 116, 84, 0.34) 0%, rgba(255, 116, 84, 0) 56%),
+                  linear-gradient(110deg, rgba(177, 18, 38, 0.96) 0%, rgba(194, 32, 51, 0.94) 52%, rgba(228, 66, 72, 0.88) 100%);
+      transform: translate(var(--fill-tx), var(--fill-ty));
+      transition: transform 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .btn:hover {
+      border-color: rgba(177, 18, 38, 0.9);
+      box-shadow: 0 0 14px rgba(177, 18, 38, 0.25), inset 0 0 10px rgba(177, 18, 38, 0.08);
+    }
+    .btn:hover::before { transform: translate(0, 0); }
+
+    .pitch {
+      position: absolute;
+      left: 50%;
+      bottom: 0;
+      width: min(1120px, 94vw);
+      border: 1px solid #1a1a1a;
+      min-height: clamp(420px, 52vh, 560px);
+      opacity: calc(0.2 + (0.74 * var(--pitch-progress)));
+      transform: translateX(-50%) translateY(calc(80% - (65% * var(--pitch-progress)))) scale(calc(1.12 - (0.24 * var(--pitch-progress))));
+      background: #080808;
+    }
+
+    .pitch::before { content: ""; position: absolute; inset: 0; border: 1px solid #1e1e1e; }
+    .pitch::after {
+      content: ""; position: absolute; top: 50%; left: 50%; width: 120px; height: 120px;
+      border: 1px solid #1e1e1e; border-radius: 50%; transform: translate(-50%, -50%);
+    }
+
+    .blob {
+      position: fixed; width: 610px; height: 610px; border-radius: 50%;
+      filter: blur(135px); pointer-events: none; z-index: 0;
+    }
+    .blob-red {
+      background: radial-gradient(circle, rgba(177, 18, 38, 0.28), transparent 70%);
+      top: -180px; left: -200px; animation: drift1 18s ease-in-out infinite;
+    }
+    .blob-red-2 {
+      background: radial-gradient(circle, rgba(177, 18, 38, 0.14), transparent 70%);
+      bottom: -140px; right: -140px; animation: drift2 22s ease-in-out infinite;
+    }
+    .blob-red-3 {
+      background: radial-gradient(circle, rgba(177, 18, 38, 0.16), transparent 70%);
+      top: 58%; left: -260px; animation: drift3 20s ease-in-out infinite;
+    }
+
+    @keyframes drift1 { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(30px, 20px); } }
+    @keyframes drift2 { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(-20px, -30px); } }
+    @keyframes drift3 { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(36px, -20px); } }
+    @keyframes widthDriftForward { 0%, 100% { transform: translateX(-22px); } 50% { transform: translateX(26px); } }
+    @keyframes widthDriftReverse { 0%, 100% { transform: translateX(24px); } 50% { transform: translateX(-24px); } }
+
+    @media (max-width: 820px) {
+      .hero-text h1 { font-size: clamp(36px, 9.2vw, 66px); }
+      .pitch { width: min(96vw, 760px); min-height: 300px; transform: translateX(-50%) translateY(calc(80% - (65% * var(--pitch-progress)))) scale(calc(1.08 - (0.2 * var(--pitch-progress)))); }
+    }
+  </style>
 </head>
 <body>
 
-    <div class="header">
-        <h1>>> SYSTEM_V1.5 // LIVE_FEED</h1>
-        <div style="display: flex; gap: 10px;">
-            <button type="button" onclick="setSpeed(800)">1x</button>
-            <button type="button" onclick="setSpeed(50)">MAX</button>
-            <button type="button" onclick="skipAll()">SKIP</button>
-
-            <form method="post" style="display: flex; gap: 5px; margin-left: 15px;">
-                {% csrf_token %}
-                <select name="match_mode">
-                    <option value="5v5">STREET_SIM [5v5]</option>
-                    <option value="11v11">PRO_LEAGUE [11v11]</option>
-                </select>
-                <select name="home_team">
-                    {% for t in teams %}<option value="{{ t.id }}">{{ t.name }}</option>{% endfor %}
-                </select>
-                <span style="padding: 8px; color: var(--text-dim);">VS</span>
-                <select name="away_team">
-                    {% for t in teams %}<option value="{{ t.id }}" {% if forloop.last %}selected{% endif %}>{{ t.name }}</option>{% endfor %}
-                </select>
-                <button type="submit" style="border-color: var(--green); color: var(--green); font-weight: bold;">EXECUTE</button>
-            </form>
-        </div>
+<div class="landing-container">
+  <div class="beta-test-0" id="betaTest0">
+    <div class="faint-blob-layer" aria-hidden="true">
+      <span class="faint-blob fblob-a"></span>
+      <span class="faint-blob fblob-b"></span>
+      <span class="faint-blob fblob-c"></span>
+      <span class="faint-blob fblob-d"></span>
     </div>
 
-    <div class="container">
+    <div class="blob blob-red"></div>
+    <div class="blob blob-red blob-red-2"></div>
+    <div class="blob blob-red blob-red-3"></div>
+
+    <div class="scroll-tracker" aria-hidden="true">
+      <span class="scroll-tracker-fill"></span>
+    </div>
+
+    <div id="pinContainer" class="pin-container">
+      <section class="panel panel-one">
+        <div class="speck-layer" aria-hidden="true">
+          <span class="speck s1"></span><span class="speck s2"></span><span class="speck s3"></span>
+          <span class="speck s4"></span><span class="speck s5"></span><span class="speck s6"></span>
+          <span class="speck s7"></span><span class="speck s8"></span><span class="speck s9"></span>
+          <span class="speck s10"></span><span class="speck s11"></span><span class="speck s12"></span>
+          <span class="speck s13"></span><span class="speck s14"></span><span class="speck s15"></span>
+          <span class="speck s16"></span>
+        </div>
         
-        <div class="log-box" id="feed">
-            {% for line in log %}
-                <div class="line">
-                    <span class="ts">>></span>
-                    <span class="{% if 'GOAL' in line %}evt-goal{% elif 'PHASE' in line %}evt-phase{% elif 'TACTICAL' in line %}evt-tactic{% elif 'SAVE' in line %}evt-save{% elif 'MISS' in line %}evt-miss{% endif %}">
-                        {{ line|safe }}
-                    </span>
-                </div>
-            {% empty %}
-                <div style="color: var(--text-dim); padding: 20px; text-align: center;">// AWAITING INSTRUCTIONS...</div>
-            {% endfor %}
+        <div class="status-bar">
+          <span class="active">SIMULATION ENGINE ACTIVE</span>
+          <span>TACTICAL GRID INITIALIZED</span>
+          <span>PLAYER MODEL LOADED</span>
+          <span>ENGINE VERSION 4.0</span>
         </div>
 
-        <div class="stats-box">
-            <div class="tab-container">
-                <button type="button" class="tab-btn active" onclick="openTab('tab-stats', this)">📊 DATA</button>
-                <button type="button" class="tab-btn" onclick="openTab('tab-squad', this)">🏃 SQUAD</button>
-                <button type="button" class="tab-btn" onclick="openTab('tab-tactics', this)">🧠 TACTICS</button>
+        <div class="nav">
+          <div class="nav-logo">TACTICAL LAB</div>
+          <div class="nav-right">
+            <div class="nav-glass">
+              <span>ABOUT</span>
+              <span>RESEARCH</span>
+              <a href="{% url 'tactical_lab' %}" class="btn js-btn" onmouseenter="setBtnFillOrigin(event)">ENTER LAB</a>
             </div>
+          </div>
+        </div>
 
-            <div id="tab-stats" class="tab-content active">
-                {% if stats %}
-                    <div id="scoreboard" class="blur" style="text-align:center; font-size:48px; padding:20px; border-bottom:1px solid var(--border); letter-spacing: 5px; font-weight: bold; color: var(--text-main);">
-                        {{ stats.home_score }} - {{ stats.away_score }}
-                    </div>
+        <div class="pinned-heading" aria-hidden="true">Football is chaotic.</div>
 
-                    <div style="padding: 15px; border-bottom: 1px solid #1a1a1a;">
-                        <div style="display:flex; justify-content:space-between; font-size:10px; color:var(--text-dim); margin-bottom: 4px;">
-                            <span>HOME_INTEGRITY</span><span>{{ stats.home_integrity_final }}%</span>
-                        </div>
-                        <div style="background:#111; height:4px; width:100%; margin-bottom:10px;">
-                            <div style="width:{{ stats.home_integrity_final }}%; height:100%; background:var(--blue); box-shadow: 0 0 5px var(--blue);"></div>
-                        </div>
-
-                        <div style="display:flex; justify-content:space-between; font-size:10px; color:var(--text-dim); margin-bottom: 4px;">
-                            <span>AWAY_INTEGRITY</span><span>{{ stats.away_integrity_final }}%</span>
-                        </div>
-                        <div style="background:#111; height:4px; width:100%;">
-                            <div style="width:{{ stats.away_integrity_final }}%; height:100%; background:var(--red); box-shadow: 0 0 5px var(--red);"></div>
-                        </div>
-                    </div>
-
-                    <table class="squad-table" style="margin-top: 10px;">
-                        <tbody>
-                            <tr><td colspan="3" style="text-align:center; color:var(--text-dim); font-size:10px; letter-spacing:1px; padding-top:10px;">OFFENSIVE_METRICS</td></tr>
-                            <tr>
-                                <td style="text-align:left; font-weight:bold; color:var(--text-main);">{{ stats.home_possession_pct }}%</td>
-                                <td style="text-align:center; color:var(--text-dim);">POSSESSION</td>
-                                <td style="text-align:right; font-weight:bold; color:var(--text-main);">{{ stats.away_possession_pct }}%</td>
-                            </tr>
-                            <tr>
-                                <td style="text-align:left;">{{ stats.home_shots }} <span style="color:var(--text-dim); font-size:10px;">({{ stats.home_on_target }})</span></td>
-                                <td style="text-align:center; color:var(--text-dim);">SHOTS (ON TGT)</td>
-                                <td style="text-align:right;">{{ stats.away_shots }} <span style="color:var(--text-dim); font-size:10px;">({{ stats.away_on_target }})</span></td>
-                            </tr>
-
-                            <tr><td colspan="3" style="text-align:center; color:var(--text-dim); font-size:10px; letter-spacing:1px; padding-top:10px;">TACTICAL_FLOW</td></tr>
-                            <tr>
-                                <td style="text-align:left; color:var(--blue);">{{ stats.home_pass_pct }}%</td>
-                                <td style="text-align:center; color:var(--text-dim);">PASS_ACCURACY</td>
-                                <td style="text-align:right; color:var(--red);">{{ stats.away_pass_pct }}%</td>
-                            </tr>
-                            
-                            <tr><td colspan="3" style="text-align:center; color:var(--text-dim); font-size:10px; letter-spacing:1px; padding-top:10px;">DISCIPLINE</td></tr>
-                            <tr>
-                                <td style="text-align:left;">{{ stats.home_fouls }}</td>
-                                <td style="text-align:center; color:var(--text-dim);">FOULS COMMITTED</td>
-                                <td style="text-align:right;">{{ stats.away_fouls }}</td>
-                            </tr>
-                        </tbody>
-                    </table>
-
-                {% else %}
-                    <div style="text-align:center; padding:50px; color:var(--text-dim); letter-spacing: 1px;">
-                        // NO TELEMETRY LINK ESTABLISHED
-                    </div>
-                {% endif %}
+        <div class="hero">
+          <div class="hero-text">
+            <h1>
+              <span class="hero-headline">Football is chaotic.</span>
+              <span class="hero-headline">We built the machine.</span>
+            </h1>
+            <div class="cta">
+              <a href="{% url 'tactical_lab' %}" class="btn js-btn" onmouseenter="setBtnFillOrigin(event)">ENTER LAB</a>
             </div>
-
-            <div id="tab-squad" class="tab-content">
-    <h3 style="border-bottom: 1px solid var(--border); color:var(--text-dim);">SQUAD_MANIFEST</h3>
-    
-    <form method="post">
-        {% csrf_token %}
-        <input type="hidden" name="update_squad_view" value="true">
-        
-        <select name="edit_team_id" onchange="this.form.submit()" style="width:100%; margin-bottom:15px; border-color:var(--blue); color:var(--blue);">
-            {% for t in teams %}
-                <option value="{{ t.id }}" {% if t.id == active_edit_team_id %}selected{% endif %}>{{ t.name }}</option>
-            {% endfor %}
-        </select>
-    </form>
-
-    <form method="post">
-        {% csrf_token %}
-        <input type="hidden" name="update_squad_save" value="true">
-        <input type="hidden" name="edit_team_id" value="{{ active_edit_team_id }}">
-
-        <table class="squad-table">
-            <thead>
-                <tr style="color:var(--text-dim);">
-                    <th>START</th>
-                    <th>NAME</th>
-                    <th>ROLE</th>
-                    <th>ZONE</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for p in players %}
-                <tr>
-                    <td><input type="checkbox" name="starting_players" value="{{ p.id }}" {% if p.is_starting %}checked{% endif %}></td>
-                    <td style="color:{% if p.is_starting %}var(--green){% else %}var(--text-dim){% endif %};">{{ p.name }}</td>
-                    <td>{{ p.role }}</td>
-                    <td>
-                        <select name="zone_{{ p.id }}" class="zone-pill">
-                            <option value="L" {% if p.preferred_zone == 'L' %}selected{% endif %}>L</option>
-                            <option value="C" {% if p.preferred_zone == 'C' %}selected{% endif %}>C</option>
-                            <option value="R" {% if p.preferred_zone == 'R' %}selected{% endif %}>R</option>
-                        </select>
-                    </td>
-                </tr>
-                {% empty %}
-                    <tr><td colspan="4" style="text-align:center; padding:20px;">SELECT A TEAM ABOVE TO LOAD ROSTER</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        
-        <button type="submit" style="width:100%; border-color:var(--blue); color:var(--blue); margin-top:20px; font-weight:bold;">[ EXE ] SAVE_LINEUP</button>
-    </form>
+            <p>
+              Tactical Lab is a simulation environment designed to study formations,
+              player behavior, and tactical systems under pressure.
+            </p>
+          </div>
+          <div class="pitch"></div>
+        </div>
+      </section>
+    </div>
+  </div>
 </div>
 
-            <div id="tab-tactics" class="tab-content">
-                <h3 style="border-bottom: 1px solid var(--border); color:var(--text-dim);">COMMAND_MACRO</h3>
-                <form method="post">
-                    {% csrf_token %}
-                    <input type="hidden" name="update_tactic" value="true">
-                    <select name="target_team" style="width:100%; margin-bottom:20px;">
-                        {% for t in teams %}
-                            <option value="{{ t.id }}">{{ t.name }} [{{ t.tactical_mode }}]</option>
-                        {% endfor %}
-                    </select>
-                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                        <button type="submit" name="tactic_value" value="STANDARD">STANDARD</button>
-                        <button type="submit" name="tactic_value" value="HIGH_PRESS" style="border-color:var(--blue);">HIGH PRESS</button>
-                        <button type="submit" name="tactic_value" value="PARK_BUS" style="border-color:var(--red);">PARK BUS</button>
-                        <button type="submit" name="tactic_value" value="TIKI_TAKA" style="border-color:var(--green);">TIKI TAKA</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const rootEl = document.getElementById('betaTest0');
+    let scrollRafId = 0;
+    let scrollHost = window;
 
-    <script>
-        // 1. Tab Switching Logic
-        function openTab(tabId, btnElement) {
-            // Hide all contents
-            document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
-            // Deactivate all buttons
-            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-            
-            // Show target
-            document.getElementById(tabId).style.display = 'block';
-            // Activate button
-            if(btnElement) btnElement.classList.add('active');
-        }
-
-        // 2. Ticker Logic (Feed Animation)
-        let speed = 400;
-        let index = 0;
-        let timer = null;
-
-        function playTicker() {
-            const lines = document.getElementsByClassName("line");
-            const feed = document.getElementById("feed");
-            const scoreBoard = document.getElementById("scoreboard");
-
-            if (index < lines.length) {
-                lines[index].style.display = "block";
-                // Auto Scroll
-                if(feed.scrollTop + feed.clientHeight >= feed.scrollHeight - 100) {
-                    feed.scrollTop = feed.scrollHeight;
-                }
-                index++;
-                timer = setTimeout(playTicker, speed);
-            } else {
-                if(scoreBoard) {
-                    scoreBoard.classList.remove("blur");
-                    scoreBoard.classList.add("reveal");
-                }
-            }
-        }
-
-        function setSpeed(ms) { speed = ms; }
-        function skipAll() { speed = 0; }
-
-        // 3. Auto-Start
-       // Line 238: Auto-Run on Page Load
-document.addEventListener("DOMContentLoaded", () => {
-    // Line 240: This variable is injected by your View to remember where you left off
-    const activeTab = "{{ active_tab }}"; 
+    const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
     
-    if (activeTab) {
-        // Line 244: Trigger the tab opening logic automatically
-        const targetBtn = document.querySelector(`button[onclick*='${activeTab}']`);
-        openTab(activeTab, targetBtn);
+    const isScrollable = (el) => {
+      const style = window.getComputedStyle(el);
+      const canScrollY = style.overflowY === 'auto' || style.overflowY === 'scroll';
+      return canScrollY && el.scrollHeight > el.clientHeight;
+    };
+
+    const getScrollHost = (el) => {
+      let current = el?.parentElement;
+      while (current && current !== document.body && current !== document.documentElement) {
+        if (isScrollable(current)) return current;
+        current = current.parentElement;
+      }
+      return window;
+    };
+
+    const getScrollTop = () => scrollHost === window ? window.scrollY : scrollHost.scrollTop;
+    const getViewportHeight = () => scrollHost === window ? window.innerHeight : scrollHost.clientHeight;
+
+    const getStartOffset = (root) => {
+      if (scrollHost === window) {
+        const rect = root.getBoundingClientRect();
+        return window.scrollY + rect.top;
+      }
+      const hostRect = scrollHost.getBoundingClientRect();
+      const rootRect = root.getBoundingClientRect();
+      return scrollHost.scrollTop + (rootRect.top - hostRect.top);
+    };
+
+    const updateScrollProgress = () => {
+      scrollRafId = 0;
+      if (!rootEl) return;
+
+      const start = getStartOffset(rootEl);
+      const viewportHeight = getViewportHeight();
+      const end = start + viewportHeight * 1.2;
+      const progress = clamp((getScrollTop() - start) / (end - start), 0, 1);
+
+      const navProgress = clamp(progress / 0.3, 0, 1);
+      const titleProgress = clamp((progress - 0.06) / 0.56, 0, 1);
+      const subtitleProgress = clamp((progress - 0.12) / 0.32, 0, 1);
+      const pitchProgress = clamp((progress - 0.14) / 0.56, 0, 1);
+
+      rootEl.style.setProperty('--scroll-progress', progress.toFixed(4));
+      rootEl.style.setProperty('--nav-progress', navProgress.toFixed(4));
+      rootEl.style.setProperty('--title-progress', titleProgress.toFixed(4));
+      rootEl.style.setProperty('--subtitle-progress', subtitleProgress.toFixed(4));
+      rootEl.style.setProperty('--pitch-progress', pitchProgress.toFixed(4));
+    };
+
+    const onScrollOrResize = () => {
+      if (scrollRafId) return;
+      scrollRafId = window.requestAnimationFrame(updateScrollProgress);
+    };
+
+    window.setBtnFillOrigin = (event) => {
+      const el = event.currentTarget;
+      if (!el) return;
+
+      const rect = el.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+
+      const distances = {
+        left: x,
+        right: rect.width - x,
+        top: y,
+        bottom: rect.height - y,
+      };
+
+      const side = Object.entries(distances).sort((a, b) => a[1] - b[1])[0][0];
+
+      if (side === 'left') {
+        el.style.setProperty('--fill-tx', '-115%');
+        el.style.setProperty('--fill-ty', '0%');
+      } else if (side === 'right') {
+        el.style.setProperty('--fill-tx', '115%');
+        el.style.setProperty('--fill-ty', '0%');
+      } else if (side === 'top') {
+        el.style.setProperty('--fill-tx', '0%');
+        el.style.setProperty('--fill-ty', '-115%');
+      } else {
+        el.style.setProperty('--fill-tx', '0%');
+        el.style.setProperty('--fill-ty', '115%');
+      }
+    };
+
+    if (rootEl) {
+      scrollHost = getScrollHost(rootEl);
     }
 
-    // Line 249: Standard ticker start
-    if (document.getElementsByClassName("line").length > 0) {
-        playTicker();
+    updateScrollProgress();
+    if (scrollHost === window) {
+      window.addEventListener('scroll', onScrollOrResize, { passive: true });
+    } else {
+      scrollHost.addEventListener('scroll', onScrollOrResize, { passive: true });
     }
-});
-    </script>
+    window.addEventListener('resize', onScrollOrResize);
+  });
+</script>
 </body>
 </html>

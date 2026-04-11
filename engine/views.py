@@ -3,6 +3,10 @@ from .models import Team, Player, Match
 from .simulation.engine import play_match
 from .simulation.analyst import generate_post_match_report
 
+# --- PHASE 0: DASHBOARD ---
+def dashboard(request):
+    return render(request, 'engine/dashboard.html')
+
 # --- PHASE 1: TACTICAL LAB (Configuration) ---
 def tactical_lab(request):
     # OPTIMIZATION 1: Only fetch teams. We removed the massive "fetch all players" query.
@@ -76,8 +80,8 @@ def tactical_lab(request):
         if 'execute_match' in request.POST:
             import uuid
             
-            home_id = request.POST.get('home_team')
-            away_id = request.POST.get('away_team')
+            home_id = request.POST.get('home_team_id')
+            away_id = request.POST.get('away_team_id')
             mode = request.POST.get('match_mode', '5v5')
 
             if not home_id or not away_id:

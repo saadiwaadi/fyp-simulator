@@ -14,7 +14,6 @@ class SimPlayer:
         self.y = float(getattr(db_player, 'y', 0) or 0)
         self.vx = 0.0
         self.vy = 0.0
-        self.move_speed = 1.2
         self.speed = getattr(db_player, 'speed', 60)
 
         self.vision = getattr(db_player, 'vision', 60)
@@ -38,6 +37,8 @@ class SimPlayer:
             'work_rate': round(self.stamina / 100, 2),
             'chaos_thrives': round(max(0, (self.finishing - 70) / 100), 2) if self.finishing > 80 else 0.0,
         }
+
+        self.move_speed = 1.0 + (self.traits['work_rate'] * 0.5)
 
         self.tactical_fits = self.calculate_tactical_fits()
 

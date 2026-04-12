@@ -17,11 +17,11 @@ ZONE_MAP = {'L': 'Left', 'C': 'Center', 'R': 'Right'}
 FLANK_PRESSURE_THRESHOLD = 3
 
 
-def get_player_target(player, ball, side, field):
+def get_player_target(player, ball, side, field, tactical_style=None):
     """Get tactical target for player. Ball carrier moves to ball, others use formation."""
     if player.last_carried:
         return ball.x, ball.y
-    return get_formation_target(player, ball, side, field)
+    return get_formation_target(player, ball, side, field, tactical_style)
 
 
 class Game:
@@ -122,16 +122,40 @@ class Game:
         for minute in range(1, self.max_minutes + 1):
             state.update_ball()
 
+            h_tactical = {
+                'press': state.stats['h_press'],
+                'depth': state.stats['h_depth'],
+                'width': state.stats['h_width'],
+                'profile': h_profile.name,
+                'team_players': team_home,
+            }
+            a_tactical = {
+                'press': state.stats['a_press'],
+                'depth': state.stats['a_depth'],
+                'width': state.stats['a_width'],
+                'profile': a_profile.name,
+                'team_players': team_away,
+            }
+
             # Update player positions
             for p in team_home:
-                target_x, target_y = get_player_target(p, state.ball, 'home', state.field)
+                target_x, target_y = get_player_target(p, state.ball, 'home', state.field, h_tactical)
                 arrive(p, target_x, target_y)
                 apply_velocity(p)
 
             for p in team_away:
-                target_x, target_y = get_player_target(p, state.ball, 'away', state.field)
+                target_x, target_y = get_player_target(p, state.ball, 'away', state.field, a_tactical)
                 arrive(p, target_x, target_y)
                 apply_velocity(p)
+
+            if minute == 1:
+                role_groups = {}
+                for p in team_home:
+                    role_groups.setdefault(p.role, []).append(p)
+
+                chosen_group = next((group for group in role_groups.values() if len(group) >= 2), team_home[:2])
+                for p in chosen_group[:2]:
+                    print(f"{p.name} | role={p.role} | speed={p.move_speed:.2f} | pos=({p.x:.2f},{p.y:.2f}) | target_y={getattr(p, 'target_y', p.y):.2f} | discipline={p.traits['discipline']:.2f}")
 
             if minute == self.half_time_min:
                 recovery.apply_halftime_recovery(team_home, state.stats['h_press'], home_team.name, log)

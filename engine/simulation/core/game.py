@@ -10,17 +10,18 @@ from ..systems import fatigue
 from ..systems import recovery
 from ..systems import phases
 from ..systems.movement import place_player, arrive, apply_velocity
+from .formation import get_formation_target
 
 
 ZONE_MAP = {'L': 'Left', 'C': 'Center', 'R': 'Right'}
 FLANK_PRESSURE_THRESHOLD = 3
 
 
-def get_player_target(player, ball, att_side):
-    """Get tactical target for player. Ball carrier moves to ball, others hold position."""
+def get_player_target(player, ball, side, field):
+    """Get tactical target for player. Ball carrier moves to ball, others use formation."""
     if player.last_carried:
         return ball.x, ball.y
-    return player.x, player.y
+    return get_formation_target(player, ball, side, field)
 
 
 class Game:
@@ -123,12 +124,12 @@ class Game:
 
             # Update player positions
             for p in team_home:
-                target_x, target_y = get_player_target(p, state.ball, att_side='home')
+                target_x, target_y = get_player_target(p, state.ball, 'home', state.field)
                 arrive(p, target_x, target_y)
                 apply_velocity(p)
 
             for p in team_away:
-                target_x, target_y = get_player_target(p, state.ball, att_side='away')
+                target_x, target_y = get_player_target(p, state.ball, 'away', state.field)
                 arrive(p, target_x, target_y)
                 apply_velocity(p)
 

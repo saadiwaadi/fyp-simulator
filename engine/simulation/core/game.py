@@ -24,6 +24,42 @@ def get_player_target(player, ball, side, field, tactical_style=None):
     return get_formation_target(player, ball, side, field, tactical_style)
 
 
+def advance_carrier_position(carrier, zone_key, field, att_side):
+    """Move carrier into a realistic final-third location after a successful break."""
+    if att_side == 'home':
+        carrier.x = field.width * random.uniform(0.68, 0.88)
+    else:
+        carrier.x = field.width * random.uniform(0.12, 0.32)
+
+    zone_y = {
+        'Center': field.height * random.uniform(0.35, 0.65),
+        'Left': field.height * random.uniform(0.10, 0.35),
+        'Right': field.height * random.uniform(0.65, 0.90),
+    }
+    carrier.y = zone_y.get(zone_key, field.height * 0.5)
+
+
+def scatter_defenders_to_positions(def_team, field, def_side):
+    """Place defenders in plausible recovery positions during break defense."""
+    for defender in def_team:
+        if defender.role == 'GK':
+            defender.x = field.width * (0.02 if def_side == 'home' else 0.98)
+            defender.y = field.height * 0.5
+            continue
+
+        discipline = defender.traits.get('discipline', 0.5)
+
+        if def_side == 'home':
+            base_x = field.width * random.uniform(0.05, 0.35)
+            base_x *= (1.0 - discipline * 0.3)
+        else:
+            base_x = field.width * random.uniform(0.65, 0.95)
+            base_x += discipline * field.width * 0.1
+
+        defender.x = max(0.0, min(float(field.width), base_x))
+        defender.y = field.height * random.uniform(0.15, 0.85)
+
+
 class Game:
     def __init__(self, mode='5v5'):
         self.mode = mode
@@ -349,6 +385,10 @@ class Game:
                 state.ball.release()
                 home_has_ball = not home_has_ball
                 continue
+
+            if break_result['outcome'] == 'SUCCESS':
+                advance_carrier_position(carrier, zone_key, state.field, att_side)
+                scatter_defenders_to_positions(def_team, state.field, def_side)
 
             zone_health = break_result['zone_health']
 

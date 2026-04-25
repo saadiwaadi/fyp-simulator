@@ -1,3 +1,4 @@
+import math
 import random
 
 
@@ -16,6 +17,10 @@ _WIDTH_ZONE_WEIGHTS_11V11 = {
     4: [0.28, 0.36, 0.36],
     5: [0.18, 0.41, 0.41],
 }
+
+
+def _distance(p1, p2):
+    return math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2)
 
 
 def select_duellists(att_team, def_team, mode='5v5', att_style=None, def_style=None, mode_config=None):
@@ -53,7 +58,25 @@ def select_duellists(att_team, def_team, mode='5v5', att_style=None, def_style=N
         return weights
 
     carrier = random.choices(active_att, weights=get_weights(active_att, match_zone), k=1)[0]
-    defender = random.choices(active_def, weights=get_weights(active_def, match_zone), k=1)[0]
+
+    positioned_defenders = [
+        p for p in active_def
+        if p.x is not None and p.y is not None and (p.x != 0 or p.y != 0)
+    ]
+
+    if positioned_defenders and carrier.x is not None and carrier.y is not None:
+        distances = [_distance(carrier, d) for d in positioned_defenders]
+        max_dist = max(distances) + 0.1
+
+        proximity_weights = []
+        for i, d in enumerate(positioned_defenders):
+            proximity = (max_dist - distances[i]) / max_dist
+            zone_bonus = 2.0 if getattr(d, 'preferred_zone', 'C')[0].upper() == match_zone else 1.0
+            proximity_weights.append((proximity * 3.0 + 0.5) * zone_bonus)
+
+        defender = random.choices(positioned_defenders, weights=proximity_weights, k=1)[0]
+    else:
+        defender = random.choices(active_def, weights=get_weights(active_def, match_zone), k=1)[0]
 
     gks = [p for p in def_team if p.role == 'GK']
     gk = gks[0] if gks else def_team[0]

@@ -49,17 +49,17 @@ def resolve_finish(striker, gk, att_mult, integrity_bonus, minute):
         base_att_val *= 1.0 + (chaos_trait * 0.15)
 
     att_val = int(base_att_val)
-    def_val = int(gk.composure)
+    def_val = int(gk.composure * 1.1)
 
-    final_bonus = integrity_bonus
+    final_bonus = integrity_bonus * 0.5
     if minute < 25:
-        final_bonus = int(integrity_bonus * 0.5)
+        final_bonus = int(final_bonus * 0.5)
 
-    att_roll = att_val + final_bonus + random.randint(-18, 18)
-    def_roll = def_val + random.randint(-5, 15)
+    att_roll = att_val + final_bonus + random.randint(-20, 15)
+    def_roll = def_val + random.randint(-10, 20)
 
-    if att_roll > (def_roll + 5):
+    if att_roll > (def_roll + 12):
         return 'GOAL'
-    if att_roll > def_roll:
+    if att_roll > (def_roll - 5):
         return 'SAVE'
     return 'MISS'

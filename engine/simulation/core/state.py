@@ -80,16 +80,16 @@ class GameState:
 
         self._update_overall(struct)
 
-    def regen_structure(self, team_side, amount, zone=None, floor=40):
+    def regen_structure(self, team_side, amount, zone=None):
         struct = self.home_structure if team_side == 'home' else self.away_structure
         zones = struct['zones']
 
         if zone and zone in zones:
-            zones[zone] = max(floor, min(100.0, zones[zone] + amount))
+            zones[zone] = min(100.0, zones[zone] + amount)
         else:
             spread = amount / 3.0
             for z in zones:
-                zones[z] = max(floor, min(100.0, zones[z] + spread))
+                zones[z] = min(100.0, zones[z] + spread)
 
         self._update_overall(struct)
 
@@ -149,26 +149,32 @@ class GameState:
         current_phase = struct['phase']
         val = struct['overall']
 
-        new_phase = current_phase
-        msg = None
-
-        if val < 30 and current_phase > 0:
+        if val < 30:
             new_phase = 0
-            msg = f"☠️  [PHASE] {team_name.upper()}: STRUCTURAL COLLAPSE IMMINENT."
-        elif val < 45 and current_phase > 1:
+        elif val < 45:
             new_phase = 1
-            msg = f"🚨 [PHASE] {team_name}: Shape Unstable. Gaps everywhere."
-        elif val < 60 and current_phase > 2:
+        elif val < 60:
             new_phase = 2
-            msg = f"⚠️  [PHASE] {team_name}: Defensive line stretched."
-        elif val < 75 and current_phase > 3:
+        elif val < 75:
             new_phase = 3
-            msg = f"⚠️  [PHASE] {team_name}: Slight structural distortion."
+        else:
+            new_phase = 4
 
-        if new_phase != current_phase:
-            struct['phase'] = new_phase
-            return msg
-        return None
+        if new_phase == current_phase:
+            return None
+
+        struct['phase'] = new_phase
+        if new_phase > current_phase:
+            # Structure recovered a band; shift silently.
+            return None
+
+        messages = {
+            0: f"☠️  [PHASE] {team_name.upper()}: STRUCTURAL COLLAPSE IMMINENT.",
+            1: f"🚨 [PHASE] {team_name}: Shape Unstable. Gaps everywhere.",
+            2: f"⚠️  [PHASE] {team_name}: Defensive line stretched.",
+            3: f"⚠️  [PHASE] {team_name}: Slight structural distortion.",
+        }
+        return messages.get(new_phase)
 
     def get_zone_snapshot(self, team_side):
         struct = self.home_structure if team_side == 'home' else self.away_structure

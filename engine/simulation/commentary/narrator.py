@@ -61,7 +61,8 @@ PHASE_ALERTS = {
     3: "⚠️ [PHASE] {team}: Slight cracks in the shape. Pressure building."
 }
 
-def announce(minute, event_type, **kwargs):
+def announce(minute, event_type, rng=None, **kwargs):
+    rng = rng or random
     player = kwargs.get('player', 'Unknown')
     team = kwargs.get('team', 'Unknown')
     
@@ -76,7 +77,7 @@ def announce(minute, event_type, **kwargs):
         return f"{minute}' {PHASE_ALERTS.get(phase_level, '').format(team=team)}"
 
     # 2. Select Random Phrase
-    phrase = random.choice(PHRASES.get(event_type, ["Event occurred."]))
+    phrase = rng.choice(PHRASES.get(event_type, ["Event occurred."]))
     
     # 3. Format based on type
     if event_type == 'GOAL':

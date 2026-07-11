@@ -1,9 +1,12 @@
 def calc_burn_rates(stats, avg_h_stam, avg_a_stam):
-    h_sustainability = 0.9 + (avg_h_stam / 200.0)
-    a_sustainability = 0.9 + (avg_a_stam / 200.0)
+    # Tired squads pay MORE per action (previously inverted: fresher squads
+    # burned faster, cancelling fitness advantages - audit C6). Kept mild
+    # (0.9x fresh .. 1.15x exhausted) to avoid a runaway death spiral.
+    h_sustainability = 1.15 - (avg_h_stam / 400.0)
+    a_sustainability = 1.15 - (avg_a_stam / 400.0)
 
-    h_burn = ((stats['h_tempo'] + stats['h_press']) / 6.0) * h_sustainability
-    a_burn = ((stats['a_tempo'] + stats['a_press']) / 6.0) * a_sustainability
+    h_burn = ((stats['h_tempo'] + stats['h_press']) / 7.0) * h_sustainability
+    a_burn = ((stats['a_tempo'] + stats['a_press']) / 7.0) * a_sustainability
 
     return h_burn, a_burn
 

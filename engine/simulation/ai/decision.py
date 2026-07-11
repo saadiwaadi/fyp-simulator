@@ -8,13 +8,14 @@ def position_danger(carrier, field, att_side):
     else:
         depth_pct = 1.0 - (carrier.x / field.width)
 
-    if depth_pct < 0.66:
+    if depth_pct < 0.5:
         return 0.0
 
     center_y = field.height / 2.0
     width_penalty = abs(carrier.y - center_y) / (field.height / 2.0)
 
-    danger = (depth_pct - 0.66) / 0.34
+    danger = (depth_pct - 0.5) / 0.5
+    danger = min(danger, 1.0)
     danger *= (1.0 - width_penalty * 0.5)
 
     return round(danger, 3)
@@ -31,30 +32,32 @@ def defensive_pressure(carrier, def_team, pressure_radius=3.0):
     return min(pressure, 1.0)
 
 
-def should_attempt_shot(carrier, def_team, field, att_side, game_context):
+def should_attempt_shot(carrier, def_team, field, att_side, game_context, rng=None):
+    """Continuous shot decision: position, role, temperament, and pressure all
+    shift the probability, but a successful break is never an automatic veto
+    (audit C1 replaced the old hard danger gate)."""
+    rng = rng or random
+
     danger = position_danger(carrier, field, att_side)
-
-    if danger < 0.15:
-        return False
-
     pressure = defensive_pressure(carrier, def_team)
 
     role_inclination = {
-        'FWD': 0.7,
-        'MID': 0.3,
-        'DEF': 0.05,
+        'FWD': 0.75,
+        'MID': 0.45,
+        'DEF': 0.15,
         'GK': 0.0,
-    }.get(carrier.role, 0.2)
+    }.get(carrier.role, 0.3)
 
     selfishness = carrier.traits.get('selfishness', 0.0)
     composure = carrier.composure / 100.0
 
     shot_score = (
-        danger * 0.5
-        + role_inclination * 0.2
-        + selfishness * 0.15
-        - pressure * 0.35
-        + composure * 0.1
+        0.34
+        + danger * 0.40
+        + role_inclination * 0.25
+        + selfishness * 0.10
+        - pressure * 0.30
+        + composure * 0.05
     )
 
     score_diff = game_context.get('score_diff', 0)
@@ -68,4 +71,6 @@ def should_attempt_shot(carrier, def_team, field, att_side, game_context):
     if minute > max_minutes * 0.8 and score_diff <= 0:
         shot_score += 0.12
 
-    return random.random() < shot_score
+    shot_score *= game_context.get('shot_freq', 1.0)
+
+    return rng.random() < max(0.05, min(0.9, shot_score))

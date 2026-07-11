@@ -23,7 +23,9 @@ def _distance(p1, p2):
     return math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2)
 
 
-def select_duellists(att_team, def_team, mode='5v5', att_style=None, def_style=None, mode_config=None):
+def select_duellists(att_team, def_team, mode='5v5', att_style=None, def_style=None,
+                     mode_config=None, rng=None, discourage_center=False):
+    rng = rng or random
     att_style = att_style or {}
     def_style = def_style or {}
     mode_config = mode_config or {}
@@ -33,10 +35,16 @@ def select_duellists(att_team, def_team, mode='5v5', att_style=None, def_style=N
 
     default_width_weights = _WIDTH_ZONE_WEIGHTS_11V11 if mode == '11v11' else _WIDTH_ZONE_WEIGHTS_5V5
     width_weights = mode_config.get('width_zone_weights', default_width_weights)
-    weights = width_weights.get(att_width, width_weights[3])
+    weights = list(width_weights.get(att_width, width_weights[3]))
 
-    match_zone = random.choices(['C', 'L', 'R'], weights=weights, k=1)[0]
-    is_midfield_battle = random.random() < 0.6
+    # Anti-repetition: after sustained central play the attack looks wide.
+    # Applied to the zone odds BEFORE selection so carrier/defender weighting
+    # matches the zone actually played (audit B6).
+    if discourage_center:
+        weights[0] *= 0.3
+
+    match_zone = rng.choices(['C', 'L', 'R'], weights=weights, k=1)[0]
+    is_midfield_battle = rng.random() < 0.6
 
     def get_role_players(team, roles):
         candidates = [p for p in team if p.role in roles]
@@ -44,7 +52,7 @@ def select_duellists(att_team, def_team, mode='5v5', att_style=None, def_style=N
 
     if is_midfield_battle:
         active_att = get_role_players(att_team, ['MID', 'DEF'])
-        active_def = get_role_players(def_team, ['MID', 'FWD'])
+        active_def = get_role_players(def_team, ['MID', 'DEF'])
     else:
         active_att = get_role_players(att_team, ['FWD', 'MID'])
         active_def = get_role_players(def_team, ['DEF', 'MID'])
@@ -57,7 +65,7 @@ def select_duellists(att_team, def_team, mode='5v5', att_style=None, def_style=N
             weights.append(4.0 if p_zone_char == target_zone else 1.0)
         return weights
 
-    carrier = random.choices(active_att, weights=get_weights(active_att, match_zone), k=1)[0]
+    carrier = rng.choices(active_att, weights=get_weights(active_att, match_zone), k=1)[0]
 
     positioned_defenders = [
         p for p in active_def
@@ -74,9 +82,9 @@ def select_duellists(att_team, def_team, mode='5v5', att_style=None, def_style=N
             zone_bonus = 2.0 if getattr(d, 'preferred_zone', 'C')[0].upper() == match_zone else 1.0
             proximity_weights.append((proximity * 3.0 + 0.5) * zone_bonus)
 
-        defender = random.choices(positioned_defenders, weights=proximity_weights, k=1)[0]
+        defender = rng.choices(positioned_defenders, weights=proximity_weights, k=1)[0]
     else:
-        defender = random.choices(active_def, weights=get_weights(active_def, match_zone), k=1)[0]
+        defender = rng.choices(active_def, weights=get_weights(active_def, match_zone), k=1)[0]
 
     gks = [p for p in def_team if p.role == 'GK']
     gk = gks[0] if gks else def_team[0]

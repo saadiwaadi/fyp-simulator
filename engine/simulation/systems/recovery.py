@@ -20,5 +20,7 @@ def apply_halftime_recovery(team, press_val, team_label, log):
 
 
 def apply_micro_regen(defender):
-    if not defender.last_carried or defender.current_stamina > 20:
+    # A defender who just won the ball gets a breather, but only if tired --
+    # fresh players gain nothing from a broken-up attack.
+    if defender.current_stamina < 50:
         defender.recover_stamina(1.5)

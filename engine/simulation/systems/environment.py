@@ -1,7 +1,7 @@
 GAME_MODES = {
     '11v11': {
         'squad_size': 11,
-        'base_damage': 2.0,
+        'base_damage': 3.5,
         'fatigue_scale': 0.8,
         'shot_density': 0.8,
         'stamina_drain': 0.8,
@@ -23,12 +23,12 @@ GAME_MODES = {
     },
     '5v5': {
         'squad_size': 5,
-        'base_damage': 4.0,
+        'base_damage': 6.0,
         'fatigue_scale': 1.2,
         'shot_density': 1.2,
         'stamina_drain': 1.4,
         'stamina_recovery': 0.8,
-        'shot_frequency_modifier': 1.6,
+        'shot_frequency_modifier': 1.8,
         'match_duration': 2700,
         'pitch_size': (14, 9),
         'max_minutes': 40,

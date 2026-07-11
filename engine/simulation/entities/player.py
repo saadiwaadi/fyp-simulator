@@ -2,7 +2,8 @@ import random
 
 
 class SimPlayer:
-    def __init__(self, db_player):
+    def __init__(self, db_player, rng=None):
+        rng = rng or random
         self.id = db_player.id
         self.name = db_player.name
         self.role = db_player.role
@@ -26,7 +27,7 @@ class SimPlayer:
 
         self.current_stamina = self.stamina
         self.last_carried = False
-        self.match_form = random.uniform(-0.05, 0.05)
+        self.match_form = rng.uniform(-0.05, 0.05)
 
         self.traits = {
             'selfishness': round(max(0, (self.finishing - self.short_passing) / 100), 2),
@@ -35,7 +36,9 @@ class SimPlayer:
             'risk_appetite': round(1.0 - (self.composure / 100), 2),
             'press_resistance': round((self.composure * 0.7 + self.short_passing * 0.3) / 100, 2),
             'work_rate': round(self.stamina / 100, 2),
-            'chaos_thrives': round(max(0, (self.finishing - 70) / 100), 2) if self.finishing > 80 else 0.0,
+            # Smooth curve from 65 finishing upward; the old hard cliff at 80
+            # made scoring a monopoly of the single best finisher (audit C5).
+            'chaos_thrives': round(max(0.0, (self.finishing - 65) / 150), 2),
         }
 
         self.move_speed = 1.0 + (self.traits['work_rate'] * 0.5)
@@ -88,10 +91,11 @@ class SimPlayer:
         return self.tactical_fits.get(profile.name, 1.0)
 
     def drain_stamina(self, base_burn=1.0):
-        work_rate_mod = 0.7 + (0.3 * self.traits['work_rate'])
-        intensity_factor = 1.0 + (self.current_stamina / 100.0)
-        final_burn = base_burn * work_rate_mod * intensity_factor
-        self.current_stamina = max(0.0, self.current_stamina - final_burn)
+        # Fitter players burn slightly LESS per action (the previous factors
+        # made high-stamina players burn more, cancelling their advantage -
+        # audit C6). Range: 1.1x at work_rate 0 down to 0.9x at work_rate 1.
+        efficiency = 1.1 - (0.2 * self.traits['work_rate'])
+        self.current_stamina = max(0.0, self.current_stamina - base_burn * efficiency)
 
     def recover_stamina(self, base_amount):
         recovery_ceiling = self.stamina * 0.75
@@ -110,6 +114,7 @@ class SimPlayer:
     def get_effective_stat(self, stat_name, structural_mult=1.0):
         base = getattr(self, stat_name, 60)
         base *= (1.0 + self.match_form)
-        if self.current_stamina < 30:
-            base *= 0.7
+        # Gradual decay below 50 stamina instead of a cliff at 30.
+        if self.current_stamina < 50:
+            base *= 0.7 + 0.3 * (self.current_stamina / 50.0)
         return int(base * structural_mult)

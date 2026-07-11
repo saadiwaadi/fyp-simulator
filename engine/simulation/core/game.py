@@ -120,8 +120,19 @@ class Game:
         h_style = getattr(home_team, 'sys_style', {}) or {}
         a_style = getattr(away_team, 'sys_style', {}) or {}
 
-        h_ovr = sum([(p.speed + p.shooting + p.defense + p.stamina) / 4.0 for p in h_players]) / max(len(h_players), 1)
-        a_ovr = sum([(p.speed + p.shooting + p.defense + p.stamina) / 4.0 for p in a_players]) / max(len(a_players), 1)
+        # Team quality from attributes that actually play (audit: the legacy
+        # shooting/defense fields appear nowhere else in the simulation, so a
+        # squad rated on them could out-rate its real on-pitch ability).
+        def _ovr(players):
+            total = sum(
+                (getattr(p, 'speed', 60) + getattr(p, 'finishing', 60)
+                 + getattr(p, 'def_awareness', 60) + getattr(p, 'stamina', 70)) / 4.0
+                for p in players
+            )
+            return total / max(len(players), 1)
+
+        h_ovr = _ovr(h_players)
+        a_ovr = _ovr(a_players)
 
         state.stats.update({
             'home_score': 0,

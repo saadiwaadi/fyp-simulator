@@ -36,19 +36,36 @@ class MotionSystem:
         self.t = 0.0
         self.frames = []
 
+        role_amplitude = {'GK': 0.35, 'DEF': 0.8, 'MID': 1.15, 'FWD': 1.25}
+
         for p in self.all_players:
             p.rx = float(p.x)
             p.ry = float(p.y)
             p.rvx = 0.0
             p.rvy = 0.0
-            # Personal oscillation signature: every player shuffles around his
-            # station at his own amplitude/frequency/phase, so the team never
-            # stands statue-still and no two players move in lockstep.
+
+            # Personal movement signature, mapped from the player's profile:
+            #  - discipline shrinks the roaming radius, risk appetite grows it
+            #  - work rate sets how busily he fidgets (oscillation frequency)
+            #  - quickness (speed attr) sharpens turns via lower inertia
+            #  - role sets the baseline: keepers barely stray, forwards prowl
+            discipline = p.traits.get('discipline', 0.5)
+            risk = p.traits.get('risk_appetite', 0.3)
+            work_rate = p.traits.get('work_rate', 0.7)
+
+            amplitude = role_amplitude.get(p.role, 1.0)
+            amplitude *= (0.5 + risk * 0.9) * (1.4 - discipline * 0.8)
+            busy = 0.7 + work_rate * 0.6
+            p.motion_inertia = 0.80 - 0.12 * getattr(p, 'quickness', 0.5)
+
+            # Slow drift (fractions of a cycle per minute): players wander over
+            # 10-20 second arcs they can actually run, rather than twitching
+            # against the speed cap, so amplitude differences stay visible.
             p.wander = {
-                'ax': self.rng.uniform(0.25, 0.65),
-                'ay': self.rng.uniform(0.30, 0.75),
-                'fx': self.rng.uniform(0.6, 1.5),
-                'fy': self.rng.uniform(0.6, 1.5),
+                'ax': self.rng.uniform(0.35, 0.85) * amplitude,
+                'ay': self.rng.uniform(0.40, 0.95) * amplitude,
+                'fx': self.rng.uniform(0.18, 0.45) * busy,
+                'fy': self.rng.uniform(0.18, 0.45) * busy,
                 'px': self.rng.uniform(0.0, TAU),
                 'py': self.rng.uniform(0.0, TAU),
             }
@@ -94,8 +111,11 @@ class MotionSystem:
 
             # Inertia: velocity eases toward the desired vector, so paths curve
             # and players decelerate into position instead of beelining.
-            p.rvx = p.rvx * INERTIA + des_vx * (1.0 - INERTIA)
-            p.rvy = p.rvy * INERTIA + des_vy * (1.0 - INERTIA)
+            # Quick players (high speed attribute) carry less inertia and cut
+            # sharper; slower players take longer, rounder paths.
+            inertia = getattr(p, 'motion_inertia', INERTIA)
+            p.rvx = p.rvx * inertia + des_vx * (1.0 - inertia)
+            p.rvy = p.rvy * inertia + des_vy * (1.0 - inertia)
 
             p.rx += p.rvx * dt
             p.ry += p.rvy * dt

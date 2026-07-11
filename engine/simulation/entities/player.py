@@ -41,7 +41,12 @@ class SimPlayer:
             'chaos_thrives': round(max(0.0, (self.finishing - 65) / 150), 2),
         }
 
-        self.move_speed = 1.0 + (self.traits['work_rate'] * 0.5)
+        # Pace comes from the SPEED attribute (audit: it previously derived
+        # from stamina, leaving the speed rating with zero effect on motion).
+        # Range ~1.0 (40 pace) to ~1.5 (100 pace) keeps leash dynamics intact.
+        self.move_speed = 0.7 + (max(40, min(100, self.speed)) / 100.0) * 0.8
+        # Quickness 0..1: how sharply a player accelerates and turns.
+        self.quickness = max(0.0, min(1.0, (self.speed - 40) / 50.0))
 
         self.tactical_fits = self.calculate_tactical_fits()
 
@@ -70,20 +75,23 @@ class SimPlayer:
             'Counter Attack': 1.0,
         }
 
+        # Fit multipliers are deliberately mild (±10%): they apply to every
+        # duel and compound across a match, so wider ranges turn a stylistic
+        # mismatch into an auto-loss (verified by the motion/fit probe).
         if self.stamina > 80 and self.interceptions > 75:
-            fit['High Press'] = 1.18
+            fit['High Press'] = 1.10
         elif self.stamina < 65:
-            fit['High Press'] = 0.82
+            fit['High Press'] = 0.90
 
         if self.short_passing > 85 and self.vision > 85:
-            fit['Tiki Taka'] = 1.18
+            fit['Tiki Taka'] = 1.10
         elif self.short_passing < 70:
-            fit['Tiki Taka'] = 0.82
+            fit['Tiki Taka'] = 0.90
 
         if self.def_awareness > 80:
-            fit['Park the Bus'] = 1.18
+            fit['Park the Bus'] = 1.10
         elif self.composure < 60:
-            fit['Park the Bus'] = 0.88
+            fit['Park the Bus'] = 0.94
 
         return fit
 

@@ -64,6 +64,23 @@
         </div>
 
         <div class="panel center-panel">
+            <div class="pitch-wrap" id="pitch-wrap">
+                <div class="terminal-header pitch-header">
+                    <span>>> SPATIAL_TRACKING</span>
+                    <span class="pitch-legend">
+                        <span class="legend-dot legend-home"></span>{{ match.home_team.name }}
+                        <span class="legend-dot legend-away"></span>{{ match.away_team.name }}
+                    </span>
+                </div>
+                <div id="pitch" class="pitch">
+                    <div class="pitch-line halfway"></div>
+                    <div class="pitch-circle"></div>
+                    <div class="pitch-box box-left"></div>
+                    <div class="pitch-box box-right"></div>
+                    <div class="pitch-goal goal-left"></div>
+                    <div class="pitch-goal goal-right"></div>
+                </div>
+            </div>
             <div class="terminal-header">
                 <span>>> LIVE_FEED</span>
                 <span class="blink">_ACTIVE</span>
@@ -138,6 +155,9 @@
     </div>
 
     {{ logs|json_script:"match-logs-data" }}
+    {{ stats.movement_frames|default:None|json_script:"movement-frames" }}
+    {{ stats.movement_roster|default:None|json_script:"movement-roster" }}
+    {{ stats.pitch_size|default:None|json_script:"pitch-size" }}
 
     <script>
         // Ensure we handle missing stats gracefully so JS doesn't crash

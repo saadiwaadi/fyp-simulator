@@ -74,3 +74,63 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Conso
 @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 .blink { animation: blink 1s infinite; }
 @keyframes blink { 50% { opacity: 0.5; } }
+/* ─── LIVE PITCH (spatial tracking) ─────────────────────────── */
+.pitch-wrap { flex: 0 0 auto; border-bottom: 1px solid var(--border); background: #030503; }
+.pitch-header { display: flex; justify-content: space-between; align-items: center; }
+.pitch-legend { display: flex; align-items: center; gap: 6px; font-size: 10px; color: #777; }
+.legend-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-left: 10px; }
+.legend-home { background: var(--term-blue); }
+.legend-away { background: var(--term-red); }
+
+.pitch {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 20 / 13;
+    max-height: 42vh;
+    margin: 0 auto;
+    background:
+        repeating-linear-gradient(90deg, rgba(0, 255, 65, 0.03) 0 10%, rgba(0, 255, 65, 0.06) 10% 20%),
+        #071207;
+    border-top: 1px solid #143014;
+    overflow: hidden;
+}
+.pitch-line.halfway { position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: rgba(0, 255, 65, 0.25); }
+.pitch-circle {
+    position: absolute; left: 50%; top: 50%; width: 18%; aspect-ratio: 1;
+    transform: translate(-50%, -50%); border: 1px solid rgba(0, 255, 65, 0.25); border-radius: 50%;
+}
+.pitch-box { position: absolute; top: 22%; bottom: 22%; width: 13%; border: 1px solid rgba(0, 255, 65, 0.25); }
+.pitch-box.box-left { left: 0; border-left: none; }
+.pitch-box.box-right { right: 0; border-right: none; }
+.pitch-goal { position: absolute; top: 42%; bottom: 42%; width: 1.2%; background: rgba(0, 255, 65, 0.35); }
+.pitch-goal.goal-left { left: 0; }
+.pitch-goal.goal-right { right: 0; }
+
+.player-dot {
+    position: absolute; width: 11px; height: 11px; border-radius: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 6px rgba(0, 0, 0, 0.8);
+    z-index: 2;
+}
+.player-dot.home { background: var(--term-blue); box-shadow: 0 0 7px rgba(0, 204, 255, 0.55); }
+.player-dot.away { background: var(--term-red); box-shadow: 0 0 7px rgba(255, 51, 51, 0.55); }
+.player-dot.gk { border: 2px solid #ffd700; width: 10px; height: 10px; }
+.player-dot .dot-label {
+    position: absolute; top: -14px; left: 50%; transform: translateX(-50%);
+    font-size: 8px; color: #9a9a9a; white-space: nowrap; pointer-events: none;
+    opacity: 0; transition: opacity 0.15s;
+}
+.player-dot:hover .dot-label { opacity: 1; }
+
+.ball-dot {
+    position: absolute; width: 7px; height: 7px; border-radius: 50%;
+    background: #fff; transform: translate(-50%, -50%);
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.9);
+    z-index: 3;
+}
+
+@media (max-width: 900px) {
+    .sim-grid { grid-template-columns: 1fr; height: auto; }
+    .panel { border-right: none; border-bottom: 1px solid var(--border); }
+    body { overflow: auto; height: auto; }
+}

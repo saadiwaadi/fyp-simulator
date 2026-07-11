@@ -145,11 +145,15 @@ def match_execution(request):
             squad += fillers[:needed - len(squad)]
         return squad
 
+    required = 11 if mode == '11v11' else 5
+
     h_players = list(Player.objects.filter(team=h_team, is_starting=True))
     a_players = list(Player.objects.filter(team=a_team, is_starting=True))
 
-    if not h_players: h_players = default_lineup(h_team, mode)
-    if not a_players: a_players = default_lineup(a_team, mode)
+    # Starters saved for another mode (e.g. a 5-man XI in an 11v11 match)
+    # must not reach the engine short-handed.
+    if len(h_players) < required: h_players = default_lineup(h_team, mode)
+    if len(a_players) < required: a_players = default_lineup(a_team, mode)
 
     current_seed = config.get('match_seed') 
 

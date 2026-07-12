@@ -115,15 +115,17 @@ function pitchTick(ts) {
         const [tx, ty] = frame.p[idx];
         d.x += (tx - d.x) * ease;
         d.y += (ty - d.y) * ease;
-        d.el.style.left = (d.x / st.fieldW * 100) + '%';
-        d.el.style.top = (d.y / st.fieldH * 100) + '%';
+        const pctX = (d.x / st.fieldW * 100);
+        const pctY = (d.y / st.fieldH * 100);
+        d.el.style.transform = `translate(calc(${pctX}% - 50%), calc(${pctY}% - 50%))`;
     });
 
     const b = st.ballDot;
     b.x += (frame.b[0] - b.x) * ease * 1.4;
     b.y += (frame.b[1] - b.y) * ease * 1.4;
-    b.el.style.left = (b.x / st.fieldW * 100) + '%';
-    b.el.style.top = (b.y / st.fieldH * 100) + '%';
+    const ballPctX = (b.x / st.fieldW * 100);
+    const ballPctY = (b.y / st.fieldH * 100);
+    b.el.style.transform = `translate(calc(${ballPctX}% - 50%), calc(${ballPctY}% - 50%))`;
 
     requestAnimationFrame(pitchTick);
 }

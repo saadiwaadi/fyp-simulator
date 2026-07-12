@@ -6,22 +6,23 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DEEP SCAN // {{ match_state.home_team }} vs {{ match_state.away_team }}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Barlow+Condensed:wght@300;400;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 
 <style>
   :root {
-    --bg:       #080c10;
-    --surface:  #0d1520;
-    --border:   #1a2a3a;
-    --accent:   #00e5ff;
-    --gold:     #ffd700;
-    --danger:   #ff3b3b;
-    --success:  #00ff88;
-    --text:     #c8d8e8;
-    --muted:    #4a6a7a;
-    --home:     #00e5ff;
-    --away:     #ff6b35;
+    /* Matchday programme palette:
+       green #0f5d37 · red #a51418 · gold #c2a56b · cream #fbf7ef · ink #252525 */
+    --bg:       #fbf7ef;
+    --surface:  #f4eee1;
+    --border:   rgba(37, 37, 37, 0.14);
+    --accent:   #0f5d37;
+    --gold:     #a8863f;
+    --danger:   #a51418;
+    --success:  #0f5d37;
+    --text:     #252525;
+    --muted:    #8a8378;
+    --home:     #a51418;
+    --away:     #a8863f;
   }
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -29,7 +30,7 @@
   body {
     background: var(--bg);
     color: var(--text);
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
     font-size: 15px;
     min-height: 100vh;
     overflow-x: hidden;
@@ -39,14 +40,14 @@
   body::before {
     content: '';
     position: fixed; inset: 0;
-    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,229,255,0.015) 2px, rgba(0,229,255,0.015) 4px);
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(37,37,37,0.02) 2px, rgba(37,37,37,0.02) 4px);
     pointer-events: none;
     z-index: 999;
   }
 
   /* ─── HEADER ───────────────────────────────── */
   .report-header {
-    background: linear-gradient(180deg, #050a10 0%, var(--bg) 100%);
+    background: linear-gradient(180deg, #ece1cb 0%, var(--bg) 100%);
     border-bottom: 1px solid var(--border);
     padding: 0;
     position: relative;
@@ -58,7 +59,7 @@
     position: absolute;
     top: 12px; left: 0; right: 0;
     text-align: center;
-    font-family: 'Share Tech Mono', monospace;
+    font-family: 'Consolas', 'Courier New', monospace;
     font-size: 10px;
     letter-spacing: 3px;
     color: var(--muted);
@@ -76,7 +77,7 @@
   .team-block.away { text-align: right; }
 
   .team-label {
-    font-family: 'Share Tech Mono', monospace;
+    font-family: 'Consolas', 'Courier New', monospace;
     font-size: 10px;
     letter-spacing: 3px;
     color: var(--muted);
@@ -84,7 +85,7 @@
   }
 
   .team-name {
-    font-family: 'Orbitron', sans-serif;
+    font-family: Georgia, 'Times New Roman', serif;
     font-size: clamp(18px, 2.5vw, 28px);
     font-weight: 900;
     letter-spacing: 1px;
@@ -97,12 +98,12 @@
   .score-block { text-align: center; }
 
   .score-display {
-    font-family: 'Orbitron', sans-serif;
+    font-family: Georgia, 'Times New Roman', serif;
     font-size: clamp(48px, 7vw, 80px);
     font-weight: 900;
     line-height: 1;
     letter-spacing: -2px;
-    background: linear-gradient(180deg, #ffffff 0%, var(--text) 100%);
+    background: linear-gradient(180deg, #5a554c 0%, var(--text) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -111,7 +112,7 @@
   .score-sep { color: var(--muted); margin: 0 4px; }
 
   .match-meta {
-    font-family: 'Share Tech Mono', monospace;
+    font-family: 'Consolas', 'Courier New', monospace;
     font-size: 10px;
     letter-spacing: 3px;
     color: var(--muted);
@@ -122,7 +123,7 @@
     display: inline-block;
     margin-top: 8px;
     padding: 3px 12px;
-    font-family: 'Share Tech Mono', monospace;
+    font-family: 'Consolas', 'Courier New', monospace;
     font-size: 10px;
     letter-spacing: 2px;
     border-radius: 2px;
@@ -142,7 +143,7 @@
 
   .nav-tab {
     padding: 12px 20px;
-    font-family: 'Share Tech Mono', monospace;
+    font-family: 'Consolas', 'Courier New', monospace;
     font-size: 11px;
     letter-spacing: 2px;
     color: var(--muted);
@@ -170,7 +171,7 @@
 
   /* ─── SECTION TITLES ────────────────────────── */
   .section-title {
-    font-family: 'Orbitron', sans-serif;
+    font-family: Georgia, 'Times New Roman', serif;
     font-size: 11px;
     letter-spacing: 4px;
     color: var(--muted);
@@ -219,7 +220,7 @@
   .stat-card.gold::before { background: var(--gold); }
 
   .stat-label {
-    font-family: 'Share Tech Mono', monospace;
+    font-family: 'Consolas', 'Courier New', monospace;
     font-size: 9px;
     letter-spacing: 2px;
     color: var(--muted);
@@ -227,7 +228,7 @@
   }
 
   .stat-value {
-    font-family: 'Orbitron', sans-serif;
+    font-family: Georgia, 'Times New Roman', serif;
     font-size: 22px;
     font-weight: 700;
     color: var(--text);
@@ -238,7 +239,7 @@
     font-size: 12px;
     color: var(--muted);
     margin-top: 4px;
-    font-family: 'Share Tech Mono', monospace;
+    font-family: 'Consolas', 'Courier New', monospace;
   }
 
   /* ─── POSSESSION BAR ────────────────────────── */
@@ -253,7 +254,7 @@
   .poss-labels {
     display: flex;
     justify-content: space-between;
-    font-family: 'Share Tech Mono', monospace;
+    font-family: 'Consolas', 'Courier New', monospace;
     font-size: 11px;
     letter-spacing: 1px;
     margin-bottom: 10px;
@@ -307,12 +308,12 @@
     margin-bottom: 10px;
   }
 
-  .int-name { font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 2px; }
+  .int-name { font-family: 'Consolas', 'Courier New', monospace; font-size: 10px; letter-spacing: 2px; }
   .int-name.home { color: var(--home); }
   .int-name.away { color: var(--away); }
 
   .int-pct {
-    font-family: 'Orbitron', sans-serif;
+    font-family: Georgia, 'Times New Roman', serif;
     font-size: 20px;
     font-weight: 700;
   }
@@ -354,7 +355,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    font-family: 'Share Tech Mono', monospace;
+    font-family: 'Consolas', 'Courier New', monospace;
     font-size: 10px;
     letter-spacing: 1px;
     color: var(--muted);
@@ -381,7 +382,7 @@
   }
 
   .zone-name {
-    font-family: 'Orbitron', sans-serif;
+    font-family: Georgia, 'Times New Roman', serif;
     font-size: 10px;
     letter-spacing: 3px;
     color: var(--muted);
@@ -389,14 +390,14 @@
   }
 
   .zone-winner {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
     font-size: 18px;
     font-weight: 700;
     margin-bottom: 4px;
   }
 
   .zone-margin {
-    font-family: 'Share Tech Mono', monospace;
+    font-family: 'Consolas', 'Courier New', monospace;
     font-size: 10px;
     color: var(--muted);
   }
@@ -434,7 +435,7 @@
   }
 
   .impact-rank {
-    font-family: 'Orbitron', sans-serif;
+    font-family: Georgia, 'Times New Roman', serif;
     font-size: 11px;
     font-weight: 700;
     color: var(--muted);
@@ -446,7 +447,7 @@
   .impact-info {}
 
   .impact-player-name {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
     font-size: 17px;
     font-weight: 700;
     letter-spacing: 0.5px;
@@ -460,7 +461,7 @@
   }
 
   .impact-tag {
-    font-family: 'Share Tech Mono', monospace;
+    font-family: 'Consolas', 'Courier New', monospace;
     font-size: 9px;
     letter-spacing: 1px;
     color: var(--muted);
@@ -469,7 +470,7 @@
   }
 
   .impact-score {
-    font-family: 'Orbitron', sans-serif;
+    font-family: Georgia, 'Times New Roman', serif;
     font-size: 20px;
     font-weight: 700;
     color: var(--accent);
@@ -479,11 +480,11 @@
   .impact-row.mvp .impact-score { color: var(--gold); }
 
   .mvp-badge {
-    font-family: 'Share Tech Mono', monospace;
+    font-family: 'Consolas', 'Courier New', monospace;
     font-size: 8px;
     letter-spacing: 2px;
     padding: 2px 8px;
-    background: rgba(255,215,0,0.15);
+    background: rgba(194,165,107,0.22);
     border: 1px solid var(--gold);
     color: var(--gold);
   }
@@ -503,15 +504,15 @@
     position: absolute;
     right: 24px; top: 50%;
     transform: translateY(-50%);
-    font-family: 'Orbitron', sans-serif;
+    font-family: Georgia, 'Times New Roman', serif;
     font-size: 64px;
     font-weight: 900;
-    color: rgba(255,215,0,0.05);
+    color: rgba(194,165,107,0.16);
     pointer-events: none;
   }
 
   .tp-text {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
     font-size: 17px;
     font-weight: 600;
     color: var(--text);
@@ -534,7 +535,7 @@
   }
 
   .attr-label {
-    font-family: 'Share Tech Mono', monospace;
+    font-family: 'Consolas', 'Courier New', monospace;
     font-size: 9px;
     letter-spacing: 3px;
     color: var(--muted);
@@ -542,7 +543,7 @@
   }
 
   .attr-value {
-    font-family: 'Orbitron', sans-serif;
+    font-family: Georgia, 'Times New Roman', serif;
     font-size: 28px;
     font-weight: 700;
   }
@@ -566,7 +567,7 @@
     display: flex;
     align-items: center;
     gap: 14px;
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
     font-size: 16px;
     font-weight: 400;
     color: var(--text);
@@ -578,7 +579,7 @@
   }
 
   .causality-num {
-    font-family: 'Share Tech Mono', monospace;
+    font-family: 'Consolas', 'Courier New', monospace;
     font-size: 10px;
     color: var(--accent);
     min-width: 20px;
@@ -626,7 +627,7 @@
     display: flex;
     justify-content: space-between;
     margin-top: 6px;
-    font-family: 'Share Tech Mono', monospace;
+    font-family: 'Consolas', 'Courier New', monospace;
     font-size: 9px;
     color: var(--muted);
     letter-spacing: 1px;
@@ -649,7 +650,7 @@
   }
 
   .rating-label {
-    font-family: 'Share Tech Mono', monospace;
+    font-family: 'Consolas', 'Courier New', monospace;
     font-size: 9px;
     letter-spacing: 2px;
     color: var(--muted);
@@ -657,7 +658,7 @@
   }
 
   .rating-value {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
     font-size: 22px;
     font-weight: 700;
     color: var(--text);
@@ -667,7 +668,7 @@
   .action-bar {
     position: fixed;
     bottom: 0; left: 0; right: 0;
-    background: rgba(8, 12, 16, 0.95);
+    background: rgba(251, 247, 239, 0.95);
     border-top: 1px solid var(--border);
     padding: 14px 48px;
     display: flex;
@@ -678,7 +679,7 @@
   }
 
   .match-id-label {
-    font-family: 'Share Tech Mono', monospace;
+    font-family: 'Consolas', 'Courier New', monospace;
     font-size: 10px;
     letter-spacing: 2px;
     color: var(--muted);
@@ -687,7 +688,7 @@
   .btn-group { display: flex; gap: 12px; }
 
   .btn {
-    font-family: 'Share Tech Mono', monospace;
+    font-family: 'Consolas', 'Courier New', monospace;
     font-size: 11px;
     letter-spacing: 2px;
     padding: 10px 22px;
@@ -701,10 +702,10 @@
   .btn-primary {
     background: var(--accent);
     border-color: var(--accent);
-    color: #000;
+    color: #fbf7ef;
   }
 
-  .btn-primary:hover { background: #00c8e0; border-color: #00c8e0; }
+  .btn-primary:hover { background: #0c4b2d; border-color: #0c4b2d; }
 
   .btn-ghost {
     background: transparent;
@@ -888,17 +889,17 @@
         <div style="position:absolute; top:0;left:0;right:0;height:2px; background: linear-gradient(90deg, var(--gold), transparent);"></div>
         <div style="display:flex; justify-content:space-between; align-items: flex-start;">
           <div>
-            <div style="font-family:'Share Tech Mono',monospace; font-size:9px; letter-spacing:3px; color:var(--gold); margin-bottom:8px;">▲ MATCH MVP</div>
-            <div style="font-family:'Orbitron',sans-serif; font-size:26px; font-weight:900; color: var(--text);">{{ mvp.name }}</div>
+            <div style="font-family:'Consolas',monospace; font-size:9px; letter-spacing:3px; color:var(--gold); margin-bottom:8px;">▲ MATCH MVP</div>
+            <div style="font-family:'Georgia',sans-serif; font-size:26px; font-weight:900; color: var(--text);">{{ mvp.name }}</div>
             <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
               {% for d in mvp.details %}
-                <span style="font-family:'Share Tech Mono',monospace; font-size:9px; letter-spacing:1px; color:var(--gold); padding:3px 8px; border:1px solid rgba(255,215,0,0.3);">{{ d }}</span>
+                <span style="font-family:'Consolas',monospace; font-size:9px; letter-spacing:1px; color:var(--gold); padding:3px 8px; border:1px solid rgba(255,215,0,0.3);">{{ d }}</span>
               {% endfor %}
             </div>
           </div>
           <div style="text-align:right;">
-            <div style="font-family:'Share Tech Mono',monospace; font-size:9px; letter-spacing:2px; color:var(--muted);">IMPACT SCORE</div>
-            <div style="font-family:'Orbitron',sans-serif; font-size:42px; font-weight:900; color:var(--gold); line-height:1;">{{ mvp.total }}</div>
+            <div style="font-family:'Consolas',monospace; font-size:9px; letter-spacing:2px; color:var(--muted);">IMPACT SCORE</div>
+            <div style="font-family:'Georgia',sans-serif; font-size:42px; font-weight:900; color:var(--gold); line-height:1;">{{ mvp.total }}</div>
           </div>
         </div>
       </div>
@@ -926,12 +927,12 @@
         </div>
         <div>
           <div class="impact-score">{{ player.total }}</div>
-          <div style="font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--muted); text-align:right; margin-top:2px;">PTS</div>
+          <div style="font-family:'Consolas',monospace; font-size:9px; color:var(--muted); text-align:right; margin-top:2px;">PTS</div>
         </div>
         <div class="causality-arrow"></div>
       </div>
       {% empty %}
-      <div style="padding:32px; text-align:center; color:var(--muted); font-family:'Share Tech Mono',monospace; font-size:11px; letter-spacing:2px;">NO IMPACT DATA RECORDED</div>
+      <div style="padding:32px; text-align:center; color:var(--muted); font-family:'Consolas',monospace; font-size:11px; letter-spacing:2px;">NO IMPACT DATA RECORDED</div>
       {% endfor %}
     </div>
 
@@ -953,14 +954,14 @@
         <div class="zone-margin">+{{ zone.margin }} actions</div>
       </div>
       {% empty %}
-      <div style="grid-column: 1/-1; padding:32px; text-align:center; color:var(--muted); font-family:'Share Tech Mono',monospace; font-size:11px; letter-spacing:2px;">NO ZONE DATA AVAILABLE</div>
+      <div style="grid-column: 1/-1; padding:32px; text-align:center; color:var(--muted); font-family:'Consolas',monospace; font-size:11px; letter-spacing:2px;">NO ZONE DATA AVAILABLE</div>
       {% endfor %}
     </div>
 
     {% if stats.break_timestamps %}
     <div class="section-title">PRESSURE MAP — BREAKS</div>
     <div class="pressure-map">
-      <div style="font-family:'Share Tech Mono',monospace; font-size:9px; letter-spacing:2px; color:var(--muted); margin-bottom:12px;">TACTICAL BREAK TIMELINE</div>
+      <div style="font-family:'Consolas',monospace; font-size:9px; letter-spacing:2px; color:var(--muted); margin-bottom:12px;">TACTICAL BREAK TIMELINE</div>
       <div class="pressure-track" id="pressureTrack">
         <!-- Markers injected via JS -->
       </div>
@@ -996,17 +997,17 @@
   <div style="background: var(--surface); border: 1px solid var(--border); padding: 18px; position: relative; overflow: hidden;">
 
     {# Zone name header #}
-    <div style="font-family:'Orbitron',sans-serif; font-size:10px; letter-spacing:3px; color:var(--muted); margin-bottom:14px; text-align:center;">
+    <div style="font-family:'Georgia',sans-serif; font-size:10px; letter-spacing:3px; color:var(--muted); margin-bottom:14px; text-align:center;">
       {{ zone.zone|upper }}
     </div>
 
     {# HOME zone bar #}
     <div style="margin-bottom: 10px;">
       <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
-        <span style="font-family:'Share Tech Mono',monospace; font-size:9px; letter-spacing:1px; color:var(--home);">HOME</span>
-        <span style="font-family:'Orbitron',sans-serif; font-size:13px; font-weight:700;
+        <span style="font-family:'Consolas',monospace; font-size:9px; letter-spacing:1px; color:var(--home);">HOME</span>
+        <span style="font-family:'Georgia',sans-serif; font-size:13px; font-weight:700;
           color: {% if zone.home_state == 'collapsed' %}var(--danger)
-                 {% elif zone.home_state == 'broken' %}#ff8c00
+                 {% elif zone.home_state == 'broken' %}#a8863f
                  {% elif zone.home_state == 'stressed' %}var(--gold)
                  {% else %}var(--success){% endif %};">
           {{ zone.home_val }}%
@@ -1015,7 +1016,7 @@
       <div style="height:4px; background:var(--border);">
         <div style="height:100%; width:{{ zone.home_val }}%;
           background: {% if zone.home_state == 'collapsed' %}var(--danger)
-                      {% elif zone.home_state == 'broken' %}#ff8c00
+                      {% elif zone.home_state == 'broken' %}#a8863f
                       {% elif zone.home_state == 'stressed' %}var(--gold)
                       {% else %}var(--success){% endif %};
           transition: width 1s ease;">
@@ -1026,10 +1027,10 @@
     {# AWAY zone bar #}
     <div>
       <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
-        <span style="font-family:'Share Tech Mono',monospace; font-size:9px; letter-spacing:1px; color:var(--away);">AWAY</span>
-        <span style="font-family:'Orbitron',sans-serif; font-size:13px; font-weight:700;
+        <span style="font-family:'Consolas',monospace; font-size:9px; letter-spacing:1px; color:var(--away);">AWAY</span>
+        <span style="font-family:'Georgia',sans-serif; font-size:13px; font-weight:700;
           color: {% if zone.away_state == 'collapsed' %}var(--danger)
-                 {% elif zone.away_state == 'broken' %}#ff8c00
+                 {% elif zone.away_state == 'broken' %}#a8863f
                  {% elif zone.away_state == 'stressed' %}var(--gold)
                  {% else %}var(--success){% endif %};">
           {{ zone.away_val }}%
@@ -1038,7 +1039,7 @@
       <div style="height:4px; background:var(--border);">
         <div style="height:100%; width:{{ zone.away_val }}%;
           background: {% if zone.away_state == 'collapsed' %}var(--danger)
-                      {% elif zone.away_state == 'broken' %}#ff8c00
+                      {% elif zone.away_state == 'broken' %}#a8863f
                       {% elif zone.away_state == 'stressed' %}var(--gold)
                       {% else %}var(--success){% endif %};
           transition: width 1.2s ease;">
@@ -1049,13 +1050,13 @@
     {# Exploitation badge — marks the weaker zone #}
     {% if zone.home_worse %}
     <div style="position:absolute; top:8px; right:8px;
-      font-family:'Share Tech Mono',monospace; font-size:8px; letter-spacing:1px;
+      font-family:'Consolas',monospace; font-size:8px; letter-spacing:1px;
       padding:2px 6px; background:rgba(255,59,59,0.15); border:1px solid var(--danger); color:var(--danger);">
       EXPLOITED
     </div>
     {% elif zone.away_val < zone.home_val %}
     <div style="position:absolute; top:8px; right:8px;
-      font-family:'Share Tech Mono',monospace; font-size:8px; letter-spacing:1px;
+      font-family:'Consolas',monospace; font-size:8px; letter-spacing:1px;
       padding:2px 6px; background:rgba(255,59,59,0.15); border:1px solid var(--danger); color:var(--danger);">
       EXPLOITED
     </div>
@@ -1191,22 +1192,22 @@
           {
             label: 'Home',
             data: hData,
-            borderColor: '#00e5ff',
-            backgroundColor: 'rgba(0,229,255,0.06)',
+            borderColor: '#a51418',
+            backgroundColor: 'rgba(165,20,24,0.07)',
             borderWidth: 2,
             pointRadius: 3,
-            pointBackgroundColor: '#00e5ff',
+            pointBackgroundColor: '#a51418',
             tension: 0.3,
             fill: true
           },
           {
             label: 'Away',
             data: aData,
-            borderColor: '#ff6b35',
-            backgroundColor: 'rgba(255,107,53,0.06)',
+            borderColor: '#a8863f',
+            backgroundColor: 'rgba(194,165,107,0.16)',
             borderWidth: 2,
             pointRadius: 3,
-            pointBackgroundColor: '#ff6b35',
+            pointBackgroundColor: '#a8863f',
             tension: 0.3,
             fill: true
           }
@@ -1219,13 +1220,13 @@
         plugins: {
           legend: { display: false },
           tooltip: {
-            backgroundColor: '#0d1520',
-            borderColor: '#1a2a3a',
+            backgroundColor: '#fbf7ef',
+            borderColor: '#c2a56b',
             borderWidth: 1,
-            titleColor: '#c8d8e8',
-            bodyColor: '#4a6a7a',
-            titleFont: { family: 'Share Tech Mono', size: 10 },
-            bodyFont: { family: 'Share Tech Mono', size: 10 },
+            titleColor: '#252525',
+            bodyColor: '#4a463f',
+            titleFont: { family: 'Consolas', size: 10 },
+            bodyFont: { family: 'Consolas', size: 10 },
             callbacks: {
               label: ctx => `${ctx.dataset.label}: ${ctx.raw}%`
             }
@@ -1233,15 +1234,15 @@
         },
         scales: {
           x: {
-            grid: { color: 'rgba(26,42,58,0.8)' },
-            ticks: { color: '#4a6a7a', font: { family: 'Share Tech Mono', size: 9 } }
+            grid: { color: 'rgba(37,37,37,0.10)' },
+            ticks: { color: '#6b655b', font: { family: 'Consolas', size: 9 } }
           },
           y: {
             min: 0, max: 100,
-            grid: { color: 'rgba(26,42,58,0.8)' },
+            grid: { color: 'rgba(37,37,37,0.10)' },
             ticks: {
-              color: '#4a6a7a',
-              font: { family: 'Share Tech Mono', size: 9 },
+              color: '#6b655b',
+              font: { family: 'Consolas', size: 9 },
               callback: v => v + '%'
             }
           }
@@ -1267,15 +1268,15 @@
           {
             label: 'Home',
             data: hVals,
-            backgroundColor: 'rgba(0,229,255,0.5)',
-            borderColor: '#00e5ff',
+            backgroundColor: 'rgba(165,20,24,0.60)',
+            borderColor: '#a51418',
             borderWidth: 1
           },
           {
             label: 'Away',
             data: aVals,
-            backgroundColor: 'rgba(255,107,53,0.5)',
-            borderColor: '#ff6b35',
+            backgroundColor: 'rgba(194,165,107,0.75)',
+            borderColor: '#a8863f',
             borderWidth: 1
           }
         ]
@@ -1287,23 +1288,23 @@
         plugins: {
           legend: { display: false },
           tooltip: {
-            backgroundColor: '#0d1520',
-            borderColor: '#1a2a3a',
+            backgroundColor: '#fbf7ef',
+            borderColor: '#c2a56b',
             borderWidth: 1,
-            titleColor: '#c8d8e8',
-            bodyColor: '#4a6a7a',
-            titleFont: { family: 'Share Tech Mono', size: 10 },
-            bodyFont: { family: 'Share Tech Mono', size: 10 }
+            titleColor: '#252525',
+            bodyColor: '#4a463f',
+            titleFont: { family: 'Consolas', size: 10 },
+            bodyFont: { family: 'Consolas', size: 10 }
           }
         },
         scales: {
           x: {
             grid: { display: false },
-            ticks: { color: '#4a6a7a', font: { family: 'Share Tech Mono', size: 10 } }
+            ticks: { color: '#6b655b', font: { family: 'Consolas', size: 10 } }
           },
           y: {
-            grid: { color: 'rgba(26,42,58,0.8)' },
-            ticks: { color: '#4a6a7a', font: { family: 'Share Tech Mono', size: 10 } }
+            grid: { color: 'rgba(37,37,37,0.10)' },
+            ticks: { color: '#6b655b', font: { family: 'Consolas', size: 10 } }
           }
         }
       }

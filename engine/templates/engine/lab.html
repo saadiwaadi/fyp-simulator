@@ -17,34 +17,36 @@
    ROOT VARIABLES — Full Design System
    ============================================= */
         :root {
-            --bg: #060a0e;
-            --surface-1: #0a0f15;
-            --surface-2: #0e1520;
-            --surface-3: #141e2c;
-            --border-faint: #18253a;
-            --border-mid: #1f3048;
-            --border-bright: #2a4060;
+            /* Matchday programme palette:
+               green #0f5d37 · red #a51418 · gold #c2a56b · cream #fbf7ef · ink #252525 */
+            --bg: #f4eee1;
+            --surface-1: #fbf7ef;
+            --surface-2: #f4eee1;
+            --surface-3: #ece1cb;
+            --border-faint: rgba(37, 37, 37, 0.12);
+            --border-mid: rgba(37, 37, 37, 0.24);
+            --border-bright: #c2a56b;
 
-            --text-dim: #2e4258;
-            --text-mid: #4a6880;
-            --text-base: #7a9ab0;
-            --text-bright: #b0ccd8;
-            --text-white: #ddeef4;
+            --text-dim: #8a8378;
+            --text-mid: #6b655b;
+            --text-base: #4a463f;
+            --text-bright: #252525;
+            --text-white: #252525;
 
-            --accent: #00c8a4;
-            --accent-dim: #004d3e;
-            --accent-glow: rgba(0, 200, 164, 0.15);
-            --accent-faint: rgba(0, 200, 164, 0.05);
+            --accent: #0f5d37;
+            --accent-dim: #cfe0d5;
+            --accent-glow: rgba(15, 93, 55, 0.20);
+            --accent-faint: rgba(15, 93, 55, 0.07);
 
-            --amber: #d4a020;
-            --amber-dim: rgba(212, 160, 32, 0.15);
-            --danger: #c83030;
-            --danger-dim: rgba(200, 48, 48, 0.15);
-            --ok: #30a850;
+            --amber: #a8863f;
+            --amber-dim: rgba(194, 165, 107, 0.22);
+            --danger: #a51418;
+            --danger-dim: rgba(165, 20, 24, 0.14);
+            --ok: #0f5d37;
 
-            --pitch-base: #071410;
-            --pitch-stripe: #081812;
-            --pitch-line: rgba(255, 255, 255, 0.09);
+            --pitch-base: #0f5d37;
+            --pitch-stripe: #0c4b2d;
+            --pitch-line: rgba(251, 247, 239, 0.45);
 
             --header-h: 52px;
             --bench-h: 148px;
@@ -54,8 +56,8 @@
             --radius-md: 6px;
             --radius-lg: 10px;
 
-            --font-display: 'Oxanium', sans-serif;
-            --font-mono: 'JetBrains Mono', monospace;
+            --font-display: Georgia, 'Times New Roman', serif;
+            --font-mono: 'Consolas', 'Courier New', monospace;
         }
 
         /* =============================================
@@ -255,7 +257,7 @@
             outline: none;
             appearance: none;
             -webkit-appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%234a6880'/%3E%3C/svg%3E");
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%236b655b'/%3E%3C/svg%3E");
             background-repeat: no-repeat;
             background-position: right 9px center;
             transition: border-color 0.2s, box-shadow 0.2s;
@@ -453,7 +455,7 @@
             justify-content: center;
             cursor: pointer;
             transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
-            background: rgba(10, 15, 21, 0.7);
+            background: rgba(251, 247, 239, 0.82);
             z-index: 10;
             backdrop-filter: blur(4px);
         }
@@ -468,14 +470,14 @@
         }
 
         .slot.drag-over {
-            border-color: var(--accent);
-            box-shadow: 0 0 20px var(--accent-glow), inset 0 0 12px var(--accent-faint);
-            background: rgba(0, 200, 164, 0.05);
+            border-color: var(--amber);
+            box-shadow: 0 0 20px rgba(194, 165, 107, 0.5), inset 0 0 12px rgba(194, 165, 107, 0.2);
+            background: rgba(251, 247, 239, 0.55);
         }
 
         .slot:not(:empty) {
             border-color: var(--border-bright);
-            background: rgba(14, 21, 32, 0.85);
+            background: rgba(251, 247, 239, 0.92);
         }
 
         /* =============================================
@@ -508,19 +510,19 @@
         }
 
         .card-role.role-gk {
-            color: #d4a020;
+            color: #a8863f;
         }
 
         .card-role.role-def {
-            color: #5090d0;
+            color: #1d4f6e;
         }
 
         .card-role.role-mid {
-            color: #40b870;
+            color: #0f5d37;
         }
 
         .card-role.role-fwd {
-            color: #cc4444;
+            color: #a51418;
         }
 
         .card-name {
@@ -931,7 +933,7 @@
 
         .diag-value.val-low {
             color: var(--ok);
-            background: rgba(48, 168, 80, 0.1);
+            background: rgba(15, 93, 55, 0.10);
         }
 
         .diag-value.val-med {
@@ -1109,7 +1111,7 @@
 
         .bench-card:hover {
             border-color: var(--border-bright);
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+            box-shadow: 0 4px 14px rgba(37, 37, 37, 0.18);
             transform: translateY(-2px);
         }
 
@@ -1126,19 +1128,19 @@
         }
 
         .bench-card-role.role-gk {
-            color: #d4a020;
+            color: #a8863f;
         }
 
         .bench-card-role.role-def {
-            color: #5090d0;
+            color: #1d4f6e;
         }
 
         .bench-card-role.role-mid {
-            color: #40b870;
+            color: #0f5d37;
         }
 
         .bench-card-role.role-fwd {
-            color: #cc4444;
+            color: #a51418;
         }
 
         .bench-card-name {
@@ -1243,7 +1245,7 @@
                 z-index: 200;
                 transform: translateX(100%);
                 transition: transform 0.3s ease;
-                box-shadow: -8px 0 32px rgba(0, 0, 0, 0.5);
+                box-shadow: -8px 0 32px rgba(37, 37, 37, 0.22);
             }
 
             .system-console.open {
@@ -1470,35 +1472,35 @@
                     <svg class="pitch-markings" viewBox="0 0 100 142" preserveAspectRatio="none"
                         xmlns="http://www.w3.org/2000/svg">
                         <!-- Outer boundary -->
-                        <rect x="2" y="2" width="96" height="138" fill="none" stroke="rgba(255,255,255,0.08)"
+                        <rect x="2" y="2" width="96" height="138" fill="none" stroke="rgba(251,247,239,0.55)"
                             stroke-width="0.6" />
                         <!-- Halfway line -->
-                        <line x1="2" y1="71" x2="98" y2="71" stroke="rgba(255,255,255,0.08)" stroke-width="0.4" />
+                        <line x1="2" y1="71" x2="98" y2="71" stroke="rgba(251,247,239,0.55)" stroke-width="0.4" />
                         <!-- Center circle -->
-                        <circle cx="50" cy="71" r="12" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="0.4" />
-                        <circle cx="50" cy="71" r="0.8" fill="rgba(255,255,255,0.12)" />
+                        <circle cx="50" cy="71" r="12" fill="none" stroke="rgba(251,247,239,0.50)" stroke-width="0.4" />
+                        <circle cx="50" cy="71" r="0.8" fill="rgba(251,247,239,0.65)" />
                         <!-- Top penalty area -->
-                        <rect x="20" y="2" width="60" height="22" fill="none" stroke="rgba(255,255,255,0.07)"
+                        <rect x="20" y="2" width="60" height="22" fill="none" stroke="rgba(251,247,239,0.50)"
                             stroke-width="0.4" />
                         <!-- Top goal area -->
-                        <rect x="33" y="2" width="34" height="9" fill="none" stroke="rgba(255,255,255,0.06)"
+                        <rect x="33" y="2" width="34" height="9" fill="none" stroke="rgba(251,247,239,0.45)"
                             stroke-width="0.4" />
                         <!-- Bottom penalty area -->
-                        <rect x="20" y="118" width="60" height="22" fill="none" stroke="rgba(255,255,255,0.07)"
+                        <rect x="20" y="118" width="60" height="22" fill="none" stroke="rgba(251,247,239,0.50)"
                             stroke-width="0.4" />
                         <!-- Bottom goal area -->
-                        <rect x="33" y="131" width="34" height="9" fill="none" stroke="rgba(255,255,255,0.06)"
+                        <rect x="33" y="131" width="34" height="9" fill="none" stroke="rgba(251,247,239,0.45)"
                             stroke-width="0.4" />
                         <!-- Corner arcs -->
-                        <path d="M2 6 Q6 2 10 2" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="0.4" />
-                        <path d="M90 2 Q94 2 98 6" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="0.4" />
-                        <path d="M2 136 Q2 140 6 142" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="0.4" />
-                        <path d="M98 136 Q98 140 94 142" fill="none" stroke="rgba(255,255,255,0.06)"
+                        <path d="M2 6 Q6 2 10 2" fill="none" stroke="rgba(251,247,239,0.45)" stroke-width="0.4" />
+                        <path d="M90 2 Q94 2 98 6" fill="none" stroke="rgba(251,247,239,0.45)" stroke-width="0.4" />
+                        <path d="M2 136 Q2 140 6 142" fill="none" stroke="rgba(251,247,239,0.45)" stroke-width="0.4" />
+                        <path d="M98 136 Q98 140 94 142" fill="none" stroke="rgba(251,247,239,0.45)"
                             stroke-width="0.4" />
                         <!-- Zone dividers (L/C/R) -->
-                        <line x1="35" y1="2" x2="35" y2="140" stroke="rgba(255,255,255,0.04)" stroke-width="0.3"
+                        <line x1="35" y1="2" x2="35" y2="140" stroke="rgba(251,247,239,0.28)" stroke-width="0.3"
                             stroke-dasharray="2 4" />
-                        <line x1="65" y1="2" x2="65" y2="140" stroke="rgba(255,255,255,0.04)" stroke-width="0.3"
+                        <line x1="65" y1="2" x2="65" y2="140" stroke="rgba(251,247,239,0.28)" stroke-width="0.3"
                             stroke-dasharray="2 4" />
                     </svg>
 
@@ -1831,7 +1833,7 @@
         /* Accent colors per slider value */
         const DEPTH_LINE_POSITIONS = { 1: 78, 2: 66, 3: 53, 4: 39, 5: 24 };
         const DEPTH_COLORS = {
-            1: '#5090d0', 2: '#70a8c0', 3: '#00c8a4', 4: '#d4a020', 5: '#c83030'
+            1: '#6f8f7f', 2: '#3d7a5c', 3: '#0f5d37', 4: '#a8863f', 5: '#a51418'
         };
 
         /* ─── SLIDER UPDATE ─── */
@@ -1880,7 +1882,7 @@
             if (!line) return;
 
             const pos = DEPTH_LINE_POSITIONS[depth] || 53;
-            const color = DEPTH_COLORS[depth] || '#00c8a4';
+            const color = DEPTH_COLORS[depth] || '#0f5d37';
             const text = SYSTEM_LABELS.depth[depth - 1] || 'Standard';
 
             line.style.top = pos + '%';

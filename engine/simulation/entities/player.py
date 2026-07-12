@@ -1,5 +1,10 @@
 import random
 
+# System-fit magnitude: suited players get 1+FIT_BONUS on every duel in that
+# system, misfits 1-FIT_BONUS. Module-level so the fit probe can sweep it
+# (±5/10/15/20%) without editing this file; ±10% is the verified-safe value.
+FIT_BONUS = 0.10
+
 
 class SimPlayer:
     def __init__(self, db_player, rng=None):
@@ -34,6 +39,10 @@ class SimPlayer:
         self.long_passing = raw_long if raw_long > 30 else int((self.short_passing + self.vision) / 2)
         raw_tackle = getattr(db_player, 'defense', 0) or 0
         self.tackling = raw_tackle if raw_tackle > 30 else int((self.def_awareness + self.interceptions) / 2)
+        # `shooting` becomes shot power: drives from range ride it, while
+        # placed finishes stay on `finishing` (see mechanics.resolve_finish).
+        raw_shooting = getattr(db_player, 'shooting', 0) or 0
+        self.shooting = raw_shooting if raw_shooting > 30 else int((self.finishing + self.speed) / 2)
 
         self.current_stamina = self.stamina
         self.last_carried = False
@@ -92,23 +101,27 @@ class SimPlayer:
             'Counter Attack': 1.0,
         }
 
-        # Fit multipliers are deliberately mild (±10%): they apply to every
-        # duel and compound across a match, so wider ranges turn a stylistic
-        # mismatch into an auto-loss (verified by the motion/fit probe).
+        # Fit multipliers are deliberately mild (FIT_BONUS, ±10% by default):
+        # they apply to every duel and compound across a match, so wider
+        # ranges turn a stylistic mismatch into an auto-loss (verified by
+        # the motion/fit probes).
+        hi = 1.0 + FIT_BONUS
+        lo = 1.0 - FIT_BONUS
+
         if self.stamina > 80 and self.interceptions > 75:
-            fit['High Press'] = 1.10
+            fit['High Press'] = hi
         elif self.stamina < 65:
-            fit['High Press'] = 0.90
+            fit['High Press'] = lo
 
         if self.short_passing > 85 and self.vision > 85:
-            fit['Tiki Taka'] = 1.10
+            fit['Tiki Taka'] = hi
         elif self.short_passing < 70:
-            fit['Tiki Taka'] = 0.90
+            fit['Tiki Taka'] = lo
 
         if self.def_awareness > 80:
-            fit['Park the Bus'] = 1.10
+            fit['Park the Bus'] = hi
         elif self.composure < 60:
-            fit['Park the Bus'] = 0.94
+            fit['Park the Bus'] = 1.0 - FIT_BONUS * 0.6
 
         return fit
 

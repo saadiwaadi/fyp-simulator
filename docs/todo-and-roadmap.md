@@ -64,13 +64,32 @@
 - ✅ Movement: stronger tactic response (depth line 5.5→8.9), personality contrast restored (maverick roams > disciplined)
 - ✅ Verified with tools/passing_probe.py + full regression (bias, motion, scenarios)
 
-### Phase 7: Dead Fields ✅ — RESOLVED (Option A: Repurpose)
+### Phase 7: Dead Fields ✅ — RESOLVED (Option A: Repurpose, ALL fields now live)
 
 | Field | Resolution |
 |-------|------------|
 | `passing` | **Repurposed** as `long_passing` — switches of play & crosses |
 | `defense` | **Repurposed** as `tackling` — ball-winning duels |
-| `shooting` | Still reserved for shot types (drive/finesse/header) — pending |
+| `shooting` | **Repurposed** as shot power — drives from range (shooting 55→90 lifts goals 0.81→1.10/match) |
+
+### Phase 8: Fit Multiplier Real-Team Testing ✅
+
+- ✅ `FIT_BONUS` parameterized in `entities/player.py` (sweepable module constant)
+- ✅ `tools/fit_probe.py`: diverse (non-uniform) squads, ±5/10/15/20% sweep
+- ✅ Verified: ±10% keeps fit visible (63-pt win gap) while misfits avoid defeat 27% of matches;
+  ±20% is an auto-loss (0 wins) — confirms ±10% as the shipped value
+
+### Phase 9: Funnel Re-Validation ✅
+
+- ✅ `tools/funnel_probe.py`: per-1000-possession rates for every gate
+- ✅ Baseline: ~90 possessions/match, 82.6% completion, 238 breaks/1000, 65 shots/1000
+  (38% finesse / 27% drive / 35% header), 23 goals/1000 (2.10 goals/match)
+
+### Shot Types ✅ (drive / finesse / header)
+
+- ✅ Situational selection: range → drive (shot power), in close → finesse (composure-shaded), cross → header
+- ✅ Headers are the hardest chance (difficulty 10, 50% connect rate vs keeper claims)
+- ✅ Per-side shot-type counters in match stats
 
 Unpopulated legacy fields fall back to blends of modern stats (see `entities/player.py`).
 
@@ -216,7 +235,7 @@ Unpopulated legacy fields fall back to blends of modern stats (see `entities/pla
 | `def_awareness` | break-defense duels, discipline (60%), Park Bus fit | ✅ Wired |
 | `finishing` | finish rolls, finisher routing, selfishness (+), chaos_thrives | ✅ Wired |
 | `composure` | GK saves, risk_appetite (inv), shot decision, Park Bus fit | ✅ Wired |
-| `shooting` | Reserved for shot types (drive/finesse/header) | ⚠️ Pending shot-types phase |
+| `shooting` → shot power | Drives from range (0.7 weight), headers (0.4) | ✅ Wired (this pass) |
 | `defense` → `tackling` | Ball-winning duels (tackle vs carrier shield) | ✅ Wired (this pass) |
 | `passing` → `long_passing` | Switches of play, crosses | ✅ Wired (this pass) |
 | *(live)* `confidence` | Event-driven momentum, ±6% on all effective stats | ✅ Wired (this pass) |
@@ -244,15 +263,16 @@ Unpopulated legacy fields fall back to blends of modern stats (see `entities/pla
 | `tools/motion_probe.py` | 4-part motion verification: tactics, personality, speed, fit | ✅ Passing |
 | `tools/probe4.py` | Per-phase sanity (goals/duel/pace targets, no NaN) | ✅ Passing |
 | `tools/passing_probe.py` | Lanes, vision gating, interceptions, tackling, confidence, switches/crosses, funnel bands | ✅ Passing |
-| `tools/funnel_probe.py` | *Future*: possession/break/shot/goal rates per match volume | 🔜 Phase 9 |
+| `tools/funnel_probe.py` | Per-1000-possession rates for every funnel gate + shot-type mix | ✅ Passing |
+| `tools/fit_probe.py` | Diverse-squad fit sweep (±5/10/15/20%) | ✅ Passing |
 
 ---
 
 ## Summary for Next Session
 
-**Pick up here**: Phase 8 (fit multiplier real-team testing) and Phase 9 funnel_probe,
-then shot types (unlocks `shooting`) and the full defending phase (GK distribution,
-clearances beyond cross-clearing).
+**Pick up here**: Phase 10 — the full defending phase (GK distribution, set-piece
+clearances, structured defensive transitions beyond the current tackle/clear
+mechanics). Everything else on the roadmap is done.
 
-**Blocker**: None — passing lanes, tackling, confidence, switches and crosses are
-all live and verified (`docs/passing-audit.md`, `tools/passing_probe.py`).
+**Blocker**: None — all attributes now drive real mechanics; every probe
+(bias, motion, passing, fit, funnel) is green.

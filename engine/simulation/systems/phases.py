@@ -272,7 +272,7 @@ def _select_finisher(att_team, carrier, rng):
 
 def run_shot_phase(att_team, def_team, gk, defender, zone_health, break_att, stat_adv,
                    att_side, def_side, att_risk_val, att_tempo_val, def_depth_val,
-                   minute, state, log, add_impact, rng=None):
+                   minute, state, log, add_impact, rng=None, from_cross=False):
     rng = rng or random
 
     carrier = next((p for p in att_team if p.last_carried), None)
@@ -280,47 +280,70 @@ def run_shot_phase(att_team, def_team, gk, defender, zone_health, break_att, sta
         outfield = [p for p in att_team if p.role != 'GK'] or att_team
         carrier = rng.choice(outfield)
 
-    finisher = _select_finisher(att_team, carrier, rng)
-    if finisher is not carrier:
-        # The finisher receives in the space the break created.
-        finisher.x, finisher.y = carrier.x, carrier.y
-        carrier = finisher
+    if from_cross:
+        # The delivery already beat the marker; whoever attacked the ball
+        # must play it first time. No lay-off, no recycling out of it —
+        # but plenty of good deliveries are still claimed or scrambled
+        # behind before the attacker truly connects.
+        if rng.random() > 0.50:
+            log.append(f"{minute}' [CLAIMED] {gk.name} rises above the pack and gathers.")
+            add_impact(gk.name, 'def_stops', 2)
+            gk.boost_confidence(0.02)
+            return {'flip': True}
+        shot_type = 'header'
+    else:
+        finisher = _select_finisher(att_team, carrier, rng)
+        if finisher is not carrier:
+            # The finisher receives in the space the break created.
+            finisher.x, finisher.y = carrier.x, carrier.y
+            carrier = finisher
 
-    game_context = {
-        'score_diff': (state.stats['home_score'] - state.stats['away_score'])
-        if att_side == 'home'
-        else (state.stats['away_score'] - state.stats['home_score']),
-        'minute': minute,
-        'max_minutes': state.stats.get('max_minutes', 90),
-        'shot_freq': state.stats.get('_shot_freq', 1.0),
-    }
+        game_context = {
+            'score_diff': (state.stats['home_score'] - state.stats['away_score'])
+            if att_side == 'home'
+            else (state.stats['away_score'] - state.stats['home_score']),
+            'minute': minute,
+            'max_minutes': state.stats.get('max_minutes', 90),
+            'shot_freq': state.stats.get('_shot_freq', 1.0),
+        }
 
-    if not should_attempt_shot(carrier, def_team, state.field, att_side, game_context, rng=rng):
-        log.append(f"{minute}' [BUILD-UP] {carrier.name} recycles -- no clear opening.")
-        return {'flip': False}
+        if not should_attempt_shot(carrier, def_team, state.field, att_side, game_context, rng=rng):
+            log.append(f"{minute}' [BUILD-UP] {carrier.name} recycles -- no clear opening.")
+            return {'flip': False}
 
-    danger = position_danger(carrier, state.field, att_side)
-    pressure = defensive_pressure(carrier, def_team)
+        danger = position_danger(carrier, state.field, att_side)
+        pressure = defensive_pressure(carrier, def_team)
 
-    shot_chance = 0.55 + (danger * 0.35) - (pressure * 0.25)
-    shot_chance = max(0.25, min(0.9, shot_chance))
+        shot_chance = 0.55 + (danger * 0.35) - (pressure * 0.25)
+        shot_chance = max(0.25, min(0.9, shot_chance))
 
-    if rng.random() > shot_chance:
-        log.append(f"{minute}' [RECOVERY] {defender.name} blocks the shooting lane!")
-        add_impact(defender.name, 'def_stops', 2)
-        defender.boost_confidence(0.02)
-        state.regen_structure(def_side, 0.6, zone='Center')
-        return {'flip': True}
+        if rng.random() > shot_chance:
+            log.append(f"{minute}' [RECOVERY] {defender.name} blocks the shooting lane!")
+            add_impact(defender.name, 'def_stops', 2)
+            defender.boost_confidence(0.02)
+            state.regen_structure(def_side, 0.6, zone='Center')
+            return {'flip': True}
+
+        # Shot type from the situation: from range you hit it (drive, shot
+        # power), in close you place it (finesse) -- composed players trust
+        # placement a little longer.
+        if danger < 0.30:
+            shot_type = 'drive'
+        else:
+            finesse_pref = 0.62 + (carrier.composure - 70) / 150.0
+            shot_type = 'finesse' if rng.random() < finesse_pref else 'drive'
 
     precision_penalty = 0
     if carrier.current_stamina < 60:
         precision_penalty = (60 - carrier.current_stamina) / 100.0
 
     state.stats[f'{att_side}_shots'] += 1
+    state.stats[f'{att_side}_shots_{shot_type}'] += 1
 
     minute_frac = minute / max(state.stats.get('max_minutes', 90), 1)
     bonus = ((100 - zone_health) / 12.0) + (stat_adv / 15.0) - precision_penalty
-    result = mechanics.resolve_finish(carrier, gk, break_att, bonus, minute_frac, rng=rng, state=state)
+    result = mechanics.resolve_finish(carrier, gk, break_att, bonus, minute_frac, rng=rng,
+                                      state=state, shot_type=shot_type)
 
     if result == 'GOAL':
         state.stats[f'{att_side}_on_target'] += 1

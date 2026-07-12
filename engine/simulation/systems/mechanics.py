@@ -114,13 +114,29 @@ def resolve_tackle(carrier, defender, att_mult, def_mult, pressure, rng=None, st
     return (def_stat + def_noise) > (att_stat + att_noise)
 
 
-def resolve_finish(striker, gk, att_mult, integrity_bonus, minute_frac, rng=None, state=None):
+# Shot types: which attributes carry the strike, and how much harder it is
+# to score than a clean placed finish. Drives ride the repurposed `shooting`
+# (shot power) field; headers are the toughest chance in the game.
+SHOT_TYPES = {
+    #            finishing, shooting, composure, difficulty
+    'finesse': (0.80, 0.00, 0.20, 0.0),
+    'drive':   (0.30, 0.70, 0.00, 3.0),
+    'header':  (0.60, 0.40, 0.00, 10.0),
+}
+
+
+def resolve_finish(striker, gk, att_mult, integrity_bonus, minute_frac, rng=None, state=None,
+                   shot_type='finesse'):
     rng = rng or random
     chaos_trait = striker.traits.get('chaos_thrives', 0.0)
+    fin_w, sho_w, com_w, difficulty = SHOT_TYPES.get(shot_type, SHOT_TYPES['finesse'])
     # Effective stat keeps the finish consistent with every other duel:
     # match form, confidence, and fatigue all reach the shooter and keeper
     # (previously raw ratings - audit follow-up).
-    base_att_val = float(striker.get_effective_stat('finishing', att_mult))
+    base_att_val = (striker.get_effective_stat('finishing', att_mult) * fin_w
+                    + striker.get_effective_stat('shooting', att_mult) * sho_w
+                    + striker.get_effective_stat('composure', att_mult) * com_w)
+    base_att_val -= difficulty
 
     if integrity_bonus > 5:
         base_att_val *= 1.0 + (chaos_trait * 0.15)

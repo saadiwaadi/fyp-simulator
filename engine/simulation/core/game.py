@@ -188,6 +188,9 @@ class Game:
                 f'{side}_tackle_attempts': 0,
                 f'{side}_tackles_won': 0,
                 f'{side}_interceptions_won': 0,
+                f'{side}_shots_finesse': 0,
+                f'{side}_shots_drive': 0,
+                f'{side}_shots_header': 0,
             })
 
         # Presentation-layer motion (separate RNG stream: never perturbs duels).
@@ -456,9 +459,12 @@ class Game:
                     chain_bonus += 0.06
                 break_att = min(break_att * chain_bonus, 3.5)
 
+                from_cross = False
+
                 if chain['outcome'] == 'CROSS':
                     # A completed cross bypasses the tactical break: the ball
                     # is already in the box, the duel is now the finish.
+                    from_cross = True
                     def_struct_dict = state.home_structure if def_side == 'home' else state.away_structure
                     zone_health = def_struct_dict['zones']['Center']
                 else:
@@ -511,6 +517,7 @@ class Game:
                                 home_has_ball = not home_has_ball
                                 continue
                             carrier = cross['carrier']
+                            from_cross = True
 
                 att_risk_val = state.stats['h_risk'] if att_side == 'home' else state.stats['a_risk']
                 att_tempo_val = state.stats['h_tempo'] if att_side == 'home' else state.stats['a_tempo']
@@ -534,6 +541,7 @@ class Game:
                     log,
                     add_impact,
                     rng,
+                    from_cross=from_cross,
                 )
 
                 if shot_result.get('goal'):

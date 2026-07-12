@@ -35,7 +35,13 @@ def resolve_possession(carrier, defender, att_mult, def_mult, rng=None, state=No
         effective_def_mult = def_mult - reduction
 
     att_stat = _duel_value(carrier.get_effective_stat('short_passing', att_mult))
-    def_stat = _duel_value(defender.get_effective_stat('interceptions', effective_def_mult))
+    # Blend the defensive read: pure interceptions let one attribute swing
+    # team pass completion by ~18 points (probe section 2), which made the
+    # first duel excessively stats-driven. Awareness carries part of it now,
+    # and the positional lane/tackle mechanics carry the rest of the press.
+    def_read = (defender.get_effective_stat('interceptions', effective_def_mult) * 0.6
+                + defender.get_effective_stat('def_awareness', effective_def_mult) * 0.4)
+    def_stat = _duel_value(def_read)
     att_noise = rng.randint(0, 28)
     def_noise = rng.randint(0, 28)
 

@@ -1,8 +1,14 @@
 import random
 
+# System-fit magnitude: suited players get 1+FIT_BONUS on every duel in that
+# system, misfits 1-FIT_BONUS. Module-level so the fit probe can sweep it
+# (±5/10/15/20%) without editing this file; ±10% is the verified-safe value.
+FIT_BONUS = 0.10
+
 
 class SimPlayer:
-    def __init__(self, db_player):
+    def __init__(self, db_player, rng=None):
+        rng = rng or random
         self.id = db_player.id
         self.name = db_player.name
         self.role = db_player.role
@@ -24,9 +30,30 @@ class SimPlayer:
         self.interceptions = getattr(db_player, 'interceptions', 60)
         self.stamina = getattr(db_player, 'stamina', 70)
 
+        # Repurposed legacy fields (roadmap Phase 7, Option A):
+        #  - `passing` becomes long passing: switches of play and crosses.
+        #  - `defense` becomes tackling: winning the ball in the duel itself.
+        # Teams created before these were populated fall back to a blend of
+        # the modern stats so old squads keep playing sensibly.
+        raw_long = getattr(db_player, 'passing', 0) or 0
+        self.long_passing = raw_long if raw_long > 30 else int((self.short_passing + self.vision) / 2)
+        raw_tackle = getattr(db_player, 'defense', 0) or 0
+        self.tackling = raw_tackle if raw_tackle > 30 else int((self.def_awareness + self.interceptions) / 2)
+        # `shooting` becomes shot power: drives from range ride it, while
+        # placed finishes stay on `finishing` (see mechanics.resolve_finish).
+        raw_shooting = getattr(db_player, 'shooting', 0) or 0
+        self.shooting = raw_shooting if raw_shooting > 30 else int((self.finishing + self.speed) / 2)
+
         self.current_stamina = self.stamina
         self.last_carried = False
-        self.match_form = random.uniform(-0.05, 0.05)
+        self.match_form = rng.uniform(-0.05, 0.05)
+
+        # Confidence: a live, event-driven morale value. Starts near neutral
+        # (shaded by match form), rises with completed passes/tackles/goals,
+        # falls with turnovers/misses/being beaten, and always eases back
+        # toward neutral. Its stat effect is deliberately small (±6% at the
+        # extremes) so momentum colours duels without deciding them.
+        self.confidence = 0.5 + self.match_form
 
         self.traits = {
             'selfishness': round(max(0, (self.finishing - self.short_passing) / 100), 2),
@@ -35,10 +62,17 @@ class SimPlayer:
             'risk_appetite': round(1.0 - (self.composure / 100), 2),
             'press_resistance': round((self.composure * 0.7 + self.short_passing * 0.3) / 100, 2),
             'work_rate': round(self.stamina / 100, 2),
-            'chaos_thrives': round(max(0, (self.finishing - 70) / 100), 2) if self.finishing > 80 else 0.0,
+            # Smooth curve from 65 finishing upward; the old hard cliff at 80
+            # made scoring a monopoly of the single best finisher (audit C5).
+            'chaos_thrives': round(max(0.0, (self.finishing - 65) / 150), 2),
         }
 
-        self.move_speed = 1.0 + (self.traits['work_rate'] * 0.5)
+        # Pace comes from the SPEED attribute (audit: it previously derived
+        # from stamina, leaving the speed rating with zero effect on motion).
+        # Range ~1.0 (40 pace) to ~1.5 (100 pace) keeps leash dynamics intact.
+        self.move_speed = 0.7 + (max(40, min(100, self.speed)) / 100.0) * 0.8
+        # Quickness 0..1: how sharply a player accelerates and turns.
+        self.quickness = max(0.0, min(1.0, (self.speed - 40) / 50.0))
 
         self.tactical_fits = self.calculate_tactical_fits()
 
@@ -67,20 +101,27 @@ class SimPlayer:
             'Counter Attack': 1.0,
         }
 
+        # Fit multipliers are deliberately mild (FIT_BONUS, ±10% by default):
+        # they apply to every duel and compound across a match, so wider
+        # ranges turn a stylistic mismatch into an auto-loss (verified by
+        # the motion/fit probes).
+        hi = 1.0 + FIT_BONUS
+        lo = 1.0 - FIT_BONUS
+
         if self.stamina > 80 and self.interceptions > 75:
-            fit['High Press'] = 1.18
+            fit['High Press'] = hi
         elif self.stamina < 65:
-            fit['High Press'] = 0.82
+            fit['High Press'] = lo
 
         if self.short_passing > 85 and self.vision > 85:
-            fit['Tiki Taka'] = 1.18
+            fit['Tiki Taka'] = hi
         elif self.short_passing < 70:
-            fit['Tiki Taka'] = 0.82
+            fit['Tiki Taka'] = lo
 
         if self.def_awareness > 80:
-            fit['Park the Bus'] = 1.18
+            fit['Park the Bus'] = hi
         elif self.composure < 60:
-            fit['Park the Bus'] = 0.88
+            fit['Park the Bus'] = 1.0 - FIT_BONUS * 0.6
 
         return fit
 
@@ -88,10 +129,11 @@ class SimPlayer:
         return self.tactical_fits.get(profile.name, 1.0)
 
     def drain_stamina(self, base_burn=1.0):
-        work_rate_mod = 0.7 + (0.3 * self.traits['work_rate'])
-        intensity_factor = 1.0 + (self.current_stamina / 100.0)
-        final_burn = base_burn * work_rate_mod * intensity_factor
-        self.current_stamina = max(0.0, self.current_stamina - final_burn)
+        # Fitter players burn slightly LESS per action (the previous factors
+        # made high-stamina players burn more, cancelling their advantage -
+        # audit C6). Range: 1.1x at work_rate 0 down to 0.9x at work_rate 1.
+        efficiency = 1.1 - (0.2 * self.traits['work_rate'])
+        self.current_stamina = max(0.0, self.current_stamina - base_burn * efficiency)
 
     def recover_stamina(self, base_amount):
         recovery_ceiling = self.stamina * 0.75
@@ -107,9 +149,22 @@ class SimPlayer:
             self.current_stamina + effective_amount,
         )
 
+    def boost_confidence(self, amount):
+        self.confidence = min(0.95, self.confidence + amount)
+
+    def sap_confidence(self, amount):
+        self.confidence = max(0.05, self.confidence - amount)
+
+    def settle_confidence(self, rate=0.02):
+        """Ease confidence back toward neutral between events."""
+        self.confidence += (0.5 - self.confidence) * rate
+
     def get_effective_stat(self, stat_name, structural_mult=1.0):
         base = getattr(self, stat_name, 60)
         base *= (1.0 + self.match_form)
-        if self.current_stamina < 30:
-            base *= 0.7
+        # Confidence shades output by at most ±6% at the extremes.
+        base *= 0.94 + self.confidence * 0.12
+        # Gradual decay below 50 stamina instead of a cliff at 30.
+        if self.current_stamina < 50:
+            base *= 0.7 + 0.3 * (self.current_stamina / 50.0)
         return int(base * structural_mult)

@@ -30,8 +30,18 @@ TACTICAL_MODIFIERS = {
 }
 
 
+_PROFILE_TO_MODIFIER_KEY = {
+    'Standard': 'STANDARD',
+    'High Press': 'HIGH_PRESS',
+    'Park the Bus': 'PARK_BUS',
+    'Tiki Taka': 'TIKI_TAKA',
+    'Counter Attack': 'COUNTER',
+}
+
+
 def get_tactical_mods(mode):
-    return TACTICAL_MODIFIERS.get(mode, TACTICAL_MODIFIERS['STANDARD'])
+    key = _PROFILE_TO_MODIFIER_KEY.get(mode, mode)
+    return TACTICAL_MODIFIERS.get(key, TACTICAL_MODIFIERS['STANDARD'])
 
 
 def calc_width_advantage(att_side, zone_key, stats):

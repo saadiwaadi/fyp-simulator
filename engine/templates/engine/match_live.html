@@ -4,14 +4,6 @@
 <head>
     <title>SIMULATION_EXECUTION // {{ match.id }}</title>
     <link rel="stylesheet" href="{% static 'css/match_style.css' %}">
-    <style>
-        /* Quick Inline Styles for Dynamic Gauges */
-        .load-safe { background: var(--neon-blue) !important; box-shadow: 0 0 10px rgba(0,204,255,0.4); }
-        .load-warn { background: orange !important; box-shadow: 0 0 10px rgba(255,165,0,0.4); }
-        .load-crit { background: var(--neon-red) !important; box-shadow: 0 0 10px rgba(255,51,51,0.4); }
-        .goal-flash { animation: flash-green 0.5s ease-out; }
-        @keyframes flash-green { 0% { color: var(--neon-green); text-shadow: 0 0 20px var(--neon-green); transform: scale(1.5); } 100% { color: var(--text-light); transform: scale(1); } }
-    </style>
 </head>
 <body>
 
@@ -59,11 +51,28 @@
 
             <div class="panel-title">>> MOMENTUM GRAPH</div>
             <div class="momentum-box">
-                <div id="momentum-indicator" class="momentum-bar" style="width: 50%; background: linear-gradient(90deg, var(--neon-blue), var(--neon-red));"></div>
+                <div id="momentum-indicator" class="momentum-bar" style="width: 50%; background: linear-gradient(90deg, var(--red), var(--gold));"></div>
             </div>
         </div>
 
         <div class="panel center-panel">
+            <div class="pitch-wrap" id="pitch-wrap">
+                <div class="terminal-header pitch-header">
+                    <span>>> SPATIAL_TRACKING</span>
+                    <span class="pitch-legend">
+                        <span class="legend-dot legend-home"></span>{{ match.home_team.name }}
+                        <span class="legend-dot legend-away"></span>{{ match.away_team.name }}
+                    </span>
+                </div>
+                <div id="pitch" class="pitch">
+                    <div class="pitch-line halfway"></div>
+                    <div class="pitch-circle"></div>
+                    <div class="pitch-box box-left"></div>
+                    <div class="pitch-box box-right"></div>
+                    <div class="pitch-goal goal-left"></div>
+                    <div class="pitch-goal goal-right"></div>
+                </div>
+            </div>
             <div class="terminal-header">
                 <span>>> LIVE_FEED</span>
                 <span class="blink">_ACTIVE</span>
@@ -138,6 +147,9 @@
     </div>
 
     {{ logs|json_script:"match-logs-data" }}
+    {{ stats.movement_frames|default:None|json_script:"movement-frames" }}
+    {{ stats.movement_roster|default:None|json_script:"movement-roster" }}
+    {{ stats.pitch_size|default:None|json_script:"pitch-size" }}
 
     <script>
         // Ensure we handle missing stats gracefully so JS doesn't crash

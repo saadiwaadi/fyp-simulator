@@ -1,5 +1,5 @@
 # 📄 TACTICAL ENGINE v1.5 — TECHNICAL SPECIFICATION
-**Status:** PRODUCTION ALPHA [LOCKED]
+**Status:** SUPERSEDED — see `docs/fix-log.md` for the v2.0 engine behaviour (several numbers below no longer match the shipped math)
 **Date:** February 15, 2026
 **Architecture:** Django (Backend) / JavaScript (Ticker) / SQLite (Data)
 

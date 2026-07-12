@@ -86,13 +86,13 @@ def get_formation_target(player, ball, side, field, tactical_style=None):
     anchor_y = anchor_pct[1] * field.height
 
     # Layer 2: manager instructions shift the anchor
-    depth_shift = (depth - 3) * 1.2
+    depth_shift = (depth - 3) * 1.6
     if side == 'home':
         anchor_x = min(anchor_x + depth_shift, field.width * 0.95)
     else:
         anchor_x = max(anchor_x - depth_shift, field.width * 0.05)
 
-    width_multiplier = 0.5 + (width / 5.0) * 0.8
+    width_multiplier = 0.42 + (width / 5.0) * 0.95
 
     # Assign deterministic width lanes by role once per formation update.
     lane_map = style.get('_lane_map')
@@ -110,18 +110,26 @@ def get_formation_target(player, ball, side, field, tactical_style=None):
     max_wander = BASE_LEASH.get(player.role, 2.5) + press_expansion
     max_wander = max(0.5, max_wander)
 
-    # Layer 3: player resistance to instructions
+    # Layer 3: player resistance to instructions.
+    # Compliance blends how well the player suits the tactical profile with
+    # his system_loyalty trait (passing+vision temperament) -- players who
+    # don't believe in the system drift off its script (audit: system_loyalty
+    # was computed but never read).
     tactical_fit = player.tactical_fits.get(tactical_profile, 1.0)
-    normalized_fit = (tactical_fit - 0.82) / (1.18 - 0.82)
+    normalized_fit = (tactical_fit - 0.90) / (1.10 - 0.90)
     normalized_fit = max(0.0, min(1.0, normalized_fit))
+    loyalty = player.traits.get('system_loyalty', 0.5)
 
-    compliance = 0.5 + (normalized_fit * 0.5)
+    compliance = 0.35 + (normalized_fit * 0.40) + (loyalty * 0.25)
 
-    discipline_tighten = player.traits['discipline'] * 1.5
-    effective_wander = max_wander * compliance - discipline_tighten * (1.0 - compliance)
+    # Discipline reins the leash in directly (not only via low compliance),
+    # so a disciplined player in a compliant side still holds his post while
+    # a maverick roams — this is what keeps temperament visible on the pitch.
+    discipline_tighten = player.traits['discipline'] * 2.2
+    effective_wander = max_wander * compliance - discipline_tighten * (0.4 + (1.0 - compliance) * 0.6)
     effective_wander = max(0.5, effective_wander)
 
-    raw_risk_push = player.traits['risk_appetite'] * 2.0
+    raw_risk_push = player.traits['risk_appetite'] * 2.4
     risk_push = raw_risk_push * (1.0 - player.traits['discipline'] * 0.5)
     if side == 'home':
         anchor_x = min(anchor_x + risk_push, field.width * 0.95)
@@ -133,10 +141,12 @@ def get_formation_target(player, ball, side, field, tactical_style=None):
         selfish_pull = player.traits['selfishness'] * 0.3 * compliance
         anchor_x += (goal_x - anchor_x) * selfish_pull
 
-    # Ball attraction within leash
+    # Ball attraction within leash. The press slider directly drives how
+    # hard the team hunts the ball, so pressing is visible on the pitch.
     base_attraction = BALL_ATTRACTION.get(player.role, 0.2)
     attraction = base_attraction * (0.7 + player.traits['work_rate'] * 0.6)
     attraction *= (1.0 - player.traits['discipline'] * 0.3)
+    attraction *= 1.0 + (press - 3) * 0.18
 
     raw_target_x = anchor_x + (ball.x - anchor_x) * attraction
     raw_target_y = anchor_y + (ball.y - anchor_y) * attraction * 0.5

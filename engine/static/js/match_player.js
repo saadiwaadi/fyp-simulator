@@ -10,6 +10,7 @@ let currentAwayScore = 0;
 let homeIntegrity = 100;
 let awayIntegrity = 100;
 let totalBreaks = 0;
+let currentMinute = 0;
 
 document.addEventListener("DOMContentLoaded", () => {
     // 1. Load the data passed from Django
@@ -18,7 +19,114 @@ document.addEventListener("DOMContentLoaded", () => {
         logsData = JSON.parse(rawData.textContent);
         playLoop();
     }
+    initPitch();
 });
+
+// --- LIVE PITCH (spatial tracking) ---
+// Renders movement frames exported by the engine. Dots ease toward each
+// frame's positions, and the frame pointer follows the commentary minute,
+// so motion stays smooth and in sync with the feed.
+const pitchState = { frames: null, roster: null, dots: [], ballDot: null, ptr: 0, subT: 0, lastTs: 0 };
+
+function readJsonScript(id) {
+    const el = document.getElementById(id);
+    if (!el) return null;
+    try { return JSON.parse(el.textContent); } catch (e) { return null; }
+}
+
+function initPitch() {
+    const frames = readJsonScript('movement-frames');
+    const roster = readJsonScript('movement-roster');
+    const pitchEl = document.getElementById('pitch');
+    if (!pitchEl) return;
+
+    if (!frames || !roster || !frames.length) {
+        // The pitch is a confirmed fixture of the execute screen: with no
+        // telemetry (a match simulated on an older engine build) it stays
+        // visible and says why it is empty instead of vanishing.
+        const fallback = document.createElement('div');
+        fallback.className = 'pitch-fallback';
+        fallback.innerHTML = '<strong>NO MOVEMENT TELEMETRY</strong>' +
+            '<span>This match was simulated before spatial tracking.<br>' +
+            'Run a new match from the Tactical Lab to see the live pitch.</span>';
+        pitchEl.appendChild(fallback);
+        return;
+    }
+
+    const size = readJsonScript('pitch-size') || [20, 13];
+    pitchState.frames = frames;
+    pitchState.roster = roster;
+    pitchState.fieldW = size[0];
+    pitchState.fieldH = size[1];
+    pitchEl.style.aspectRatio = `${size[0]} / ${size[1]}`;
+
+    // Fallback numbering (older saved matches without roster numbers):
+    // count up within each side in roster order, keeper first.
+    const sideCounter = { home: 0, away: 0 };
+
+    roster.forEach((p, idx) => {
+        sideCounter[p.side] = (sideCounter[p.side] || 0) + 1;
+        const num = p.num || sideCounter[p.side];
+
+        const dot = document.createElement('div');
+        dot.className = `player-dot ${p.side}` + (p.role === 'GK' ? ' gk' : '');
+        dot.textContent = num;
+
+        const label = document.createElement('span');
+        label.className = 'dot-label';
+        label.textContent = `${num} · ${p.name}`;
+        dot.appendChild(label);
+
+        pitchEl.appendChild(dot);
+        const [fx, fy] = frames[0].p[idx];
+        pitchState.dots.push({ el: dot, x: fx, y: fy });
+    });
+
+    const ball = document.createElement('div');
+    ball.className = 'ball-dot';
+    pitchEl.appendChild(ball);
+    pitchState.ballDot = { el: ball, x: frames[0].b[0], y: frames[0].b[1] };
+
+    requestAnimationFrame(pitchTick);
+}
+
+function pitchTick(ts) {
+    const st = pitchState;
+    if (!st.frames) return;
+    const dt = st.lastTs ? Math.min(ts - st.lastTs, 100) : 16;
+    st.lastTs = ts;
+
+    // Follow the commentary: advance toward the last frame of currentMinute,
+    // pacing sub-frames so a minute of motion spreads across the ticker time.
+    if (!isPaused) {
+        const framesPerMs = 4 / Math.max(speed * 2.2, 200); // ~4 frames per sim-minute
+        st.subT += dt * framesPerMs;
+        while (st.subT >= 1 && st.ptr < st.frames.length - 1 && st.frames[st.ptr + 1].m <= currentMinute) {
+            st.ptr++;
+            st.subT -= 1;
+        }
+        st.subT = Math.min(st.subT, 1);
+    }
+
+    const frame = st.frames[st.ptr];
+    const ease = 1 - Math.pow(0.0025, dt / 1000); // smooth chase toward frame
+
+    st.dots.forEach((d, idx) => {
+        const [tx, ty] = frame.p[idx];
+        d.x += (tx - d.x) * ease;
+        d.y += (ty - d.y) * ease;
+        d.el.style.left = (d.x / st.fieldW * 100) + '%';
+        d.el.style.top = (d.y / st.fieldH * 100) + '%';
+    });
+
+    const b = st.ballDot;
+    b.x += (frame.b[0] - b.x) * ease * 1.4;
+    b.y += (frame.b[1] - b.y) * ease * 1.4;
+    b.el.style.left = (b.x / st.fieldW * 100) + '%';
+    b.el.style.top = (b.y / st.fieldH * 100) + '%';
+
+    requestAnimationFrame(pitchTick);
+}
 
 // --- MAIN PLAYBACK LOOP ---
 function playLoop() {
@@ -43,7 +151,11 @@ function processLogLine(line) {
     // 1. Parse Minute
     let timeMatch = line.match(/^(\d+)'/);
     if (timeMatch) {
+        currentMinute = parseInt(timeMatch[1]);
         document.getElementById('sim-minute').innerText = timeMatch[1] + "'";
+    }
+    if (line.includes('FULL TIME')) {
+        currentMinute = 9999; // let the pitch play out to the last frame
     }
 
     // 2. Parse Goals & Score
@@ -89,13 +201,13 @@ function processLogLine(line) {
     let p = document.createElement('div');
     p.className = 'log-line';
     p.innerText = line;
-    
-    if (line.includes('[GOAL]')) p.style.color = 'var(--neon-green)';
-    else if (line.includes('[TACTIC]')) p.style.color = 'var(--neon-blue)';
-    else if (line.includes('[TURNOVER]')) p.style.color = 'orange';
-    else if (line.includes('Integrity')) p.style.color = 'var(--neon-red)';
-    else p.style.color = 'var(--text)';
-    
+
+    if (line.includes('[GOAL]')) p.classList.add('log-goal');
+    else if (line.includes('[TACTIC]') || line.includes('[SWITCH]') || line.includes('[CROSS]')) p.classList.add('log-tactic');
+    else if (line.includes('[TURNOVER]') || line.includes('[LOOSE]')) p.classList.add('log-turnover');
+    else if (line.includes('[TACKLE]') || line.includes('[INTERCEPTED]') || line.includes('Integrity')) p.classList.add('log-danger');
+    else if (line.includes('[SAVE]') || line.includes('[CLAIMED]') || line.includes('[CLEARED]')) p.classList.add('log-save');
+
     terminalFeed.appendChild(p);
     terminalFeed.scrollTop = terminalFeed.scrollHeight; // Auto-scroll
 }
@@ -143,6 +255,9 @@ window.skipSim = function() {
 
 function finalizeSim() {
     clearInterval(simInterval);
+    if (pitchState.frames) {
+        pitchState.ptr = pitchState.frames.length - 1; // settle dots at full-time positions
+    }
     document.getElementById('status-msg').innerText = "SIMULATION COMPLETE";
     document.getElementById('status-msg').style.color = "var(--neon-green)";
     document.getElementById('btn-return').style.display = "inline-block";

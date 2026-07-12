@@ -128,15 +128,36 @@ def match_execution(request):
     h_team.sys_style = team_tactics.get(str(h_team.id), {'tempo':3, 'width':3, 'depth':3, 'press':3, 'risk':3})
     a_team.sys_style = team_tactics.get(str(a_team.id), {'tempo':3, 'width':3, 'depth':3, 'press':3, 'risk':3})
 
+    def default_lineup(team, mode):
+        """Build a sensible XI by role when no starters were picked.
+
+        The naive [:11] slice used to field 11 goalkeepers (players are stored
+        grouped by role), producing dead matches.
+        """
+        shape = {'11v11': [('GK', 1), ('DEF', 4), ('MID', 4), ('FWD', 2)],
+                 '5v5': [('GK', 1), ('DEF', 1), ('MID', 2), ('FWD', 1)]}[mode if mode in ('11v11', '5v5') else '5v5']
+        squad = []
+        for role, count in shape:
+            squad += list(Player.objects.filter(team=team, role=role).order_by('-stamina')[:count])
+        needed = sum(c for _, c in shape)
+        if len(squad) < needed:
+            fillers = [p for p in Player.objects.filter(team=team) if p not in squad]
+            squad += fillers[:needed - len(squad)]
+        return squad
+
+    required = 11 if mode == '11v11' else 5
+
     h_players = list(Player.objects.filter(team=h_team, is_starting=True))
     a_players = list(Player.objects.filter(team=a_team, is_starting=True))
 
-    if not h_players: h_players = list(Player.objects.filter(team=h_team))[:11]
-    if not a_players: a_players = list(Player.objects.filter(team=a_team))[:11]
+    # Starters saved for another mode (e.g. a 5-man XI in an 11v11 match)
+    # must not reach the engine short-handed.
+    if len(h_players) < required: h_players = default_lineup(h_team, mode)
+    if len(a_players) < required: a_players = default_lineup(a_team, mode)
 
     current_seed = config.get('match_seed') 
 
-    logs, stats = play_match(h_team, a_team, h_players, a_players, mode=mode, sys_style=h_team.sys_style, match_seed=current_seed)
+    logs, stats = play_match(h_team, a_team, h_players, a_players, mode=mode, match_seed=current_seed)
     
     match = Match.objects.create(
         home_team=h_team, away_team=a_team, mode=mode,

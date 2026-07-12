@@ -79,16 +79,48 @@ GOAL_MARGIN = 8
 SAVE_WINDOW = 8
 
 
+def resolve_tackle(carrier, defender, att_mult, def_mult, pressure, rng=None, state=None):
+    """Defender dives in to win the ball off the carrier's feet.
+
+    Deliberately position-first: the defender's proximity (pressure 0..1)
+    is worth as much as his ratings, so a well-placed average tackler beats
+    a misplaced great one. Stats enter through the compressed duel curve
+    (tackling vs the carrier's close control) and stay damped so the duel
+    never becomes a pure ratings printout.
+    """
+    rng = rng or random
+
+    # Carrier shields with a blend of close passing control and composure.
+    control = (carrier.get_effective_stat('short_passing', att_mult) * 0.6
+               + carrier.get_effective_stat('composure', att_mult) * 0.4)
+    tackle = (defender.get_effective_stat('tackling', def_mult) * 0.7
+              + defender.get_effective_stat('def_awareness', def_mult) * 0.3)
+
+    # The carrier holds a small shield-edge (body between man and ball), the
+    # defender buys it back with positioning. Even duels land near 45% for
+    # the tackler, so diving in stays a real choice rather than a free win.
+    att_stat = _duel_value(control) + 5.0
+    def_stat = _duel_value(tackle) + pressure * 8.0
+    att_noise = rng.randint(0, 30)
+    def_noise = rng.randint(0, 30)
+
+    _record_attribution(state, att_stat - def_stat, att_noise - def_noise)
+    return (def_stat + def_noise) > (att_stat + att_noise)
+
+
 def resolve_finish(striker, gk, att_mult, integrity_bonus, minute_frac, rng=None, state=None):
     rng = rng or random
     chaos_trait = striker.traits.get('chaos_thrives', 0.0)
-    base_att_val = striker.finishing * att_mult
+    # Effective stat keeps the finish consistent with every other duel:
+    # match form, confidence, and fatigue all reach the shooter and keeper
+    # (previously raw ratings - audit follow-up).
+    base_att_val = float(striker.get_effective_stat('finishing', att_mult))
 
     if integrity_bonus > 5:
         base_att_val *= 1.0 + (chaos_trait * 0.15)
 
     att_val = _duel_value(base_att_val)
-    def_val = _duel_value(gk.composure) * 1.05
+    def_val = _duel_value(float(gk.get_effective_stat('composure'))) * 1.05
 
     final_bonus = integrity_bonus
     if minute_frac < EARLY_FINISH_FRACTION:

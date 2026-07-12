@@ -86,13 +86,13 @@ def get_formation_target(player, ball, side, field, tactical_style=None):
     anchor_y = anchor_pct[1] * field.height
 
     # Layer 2: manager instructions shift the anchor
-    depth_shift = (depth - 3) * 1.2
+    depth_shift = (depth - 3) * 1.6
     if side == 'home':
         anchor_x = min(anchor_x + depth_shift, field.width * 0.95)
     else:
         anchor_x = max(anchor_x - depth_shift, field.width * 0.05)
 
-    width_multiplier = 0.5 + (width / 5.0) * 0.8
+    width_multiplier = 0.42 + (width / 5.0) * 0.95
 
     # Assign deterministic width lanes by role once per formation update.
     lane_map = style.get('_lane_map')
@@ -122,11 +122,14 @@ def get_formation_target(player, ball, side, field, tactical_style=None):
 
     compliance = 0.35 + (normalized_fit * 0.40) + (loyalty * 0.25)
 
-    discipline_tighten = player.traits['discipline'] * 1.5
-    effective_wander = max_wander * compliance - discipline_tighten * (1.0 - compliance)
+    # Discipline reins the leash in directly (not only via low compliance),
+    # so a disciplined player in a compliant side still holds his post while
+    # a maverick roams — this is what keeps temperament visible on the pitch.
+    discipline_tighten = player.traits['discipline'] * 2.2
+    effective_wander = max_wander * compliance - discipline_tighten * (0.4 + (1.0 - compliance) * 0.6)
     effective_wander = max(0.5, effective_wander)
 
-    raw_risk_push = player.traits['risk_appetite'] * 2.0
+    raw_risk_push = player.traits['risk_appetite'] * 2.4
     risk_push = raw_risk_push * (1.0 - player.traits['discipline'] * 0.5)
     if side == 'home':
         anchor_x = min(anchor_x + risk_push, field.width * 0.95)
@@ -143,7 +146,7 @@ def get_formation_target(player, ball, side, field, tactical_style=None):
     base_attraction = BALL_ATTRACTION.get(player.role, 0.2)
     attraction = base_attraction * (0.7 + player.traits['work_rate'] * 0.6)
     attraction *= (1.0 - player.traits['discipline'] * 0.3)
-    attraction *= 1.0 + (press - 3) * 0.14
+    attraction *= 1.0 + (press - 3) * 0.18
 
     raw_target_x = anchor_x + (ball.x - anchor_x) * attraction
     raw_target_y = anchor_y + (ball.y - anchor_y) * attraction * 0.5

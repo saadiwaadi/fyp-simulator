@@ -1,7 +1,7 @@
 # Project TODO & Roadmap
 
-**Last Updated**: After motion-personalization pass + player-profile audit  
-**Status**: Attribute-driven motion complete and verified ✅
+**Last Updated**: After natural ball-progression pass (passing lanes, tackling, confidence, crossing)  
+**Status**: Phases 6 & 7 complete and verified ✅ — see `docs/passing-audit.md`
 
 ---
 
@@ -50,19 +50,33 @@
 - ✅ Pitch markings (center, box, etc.)
 - ✅ Legend with player colors (home blue, away red)
 
+### Phase 6: Passing Lanes, Ball-Winning & Natural Progression ✅
+
+- ✅ Lane geometry from real player positions, defenders shade lanes
+- ✅ Vision-gated lane perception (vision 50 sees 40% of long lanes; 90 sees 69%)
+- ✅ Position-first pass resolution: exposure sets stakes, stats tilt via compressed duel + noise
+- ✅ Natural tackling/ball-winning (pressure-triggered; ~45% baseline win, `tackling` stat 55→31%, 90→62%)
+- ✅ Interceptor reading (interceptions + def_awareness + lane closeness)
+- ✅ Cross-field switches of play (width 1 → 0.1/match, width 5 → 5.2/match)
+- ✅ Direct crossing (in-chain wide-deep + post-flank-break; ~54% completion; completed cross bypasses break)
+- ✅ Attacker/defender confidence system (event-driven, mean-reverting, ±6% max stat effect)
+- ✅ Finish rolls now use effective stats (form/confidence/fatigue) + attribution recording
+- ✅ Movement: stronger tactic response (depth line 5.5→8.9), personality contrast restored (maverick roams > disciplined)
+- ✅ Verified with tools/passing_probe.py + full regression (bias, motion, scenarios)
+
+### Phase 7: Dead Fields ✅ — RESOLVED (Option A: Repurpose)
+
+| Field | Resolution |
+|-------|------------|
+| `passing` | **Repurposed** as `long_passing` — switches of play & crosses |
+| `defense` | **Repurposed** as `tackling` — ball-winning duels |
+| `shooting` | Still reserved for shot types (drive/finesse/header) — pending |
+
+Unpopulated legacy fields fall back to blends of modern stats (see `entities/player.py`).
+
 ---
 
 ## Known Errors & Open Items
-
-### Dead Model Fields ⚠️ — DECISION NEEDED
-
-| Field | Status | Current | Fate Decision |
-|-------|--------|---------|----------------|
-| `shooting` | Removed from team OVR | Unused in any calculation | Repurpose for long-shot power (when shot types exist) OR drop from model + Lab UI |
-| `defense` | Removed from team OVR | Unused in any calculation | Repurpose for tackling/defensive interception (when defending phase lands) OR drop from model + Lab UI |
-| `passing` | Fully superseded by `short_passing` | Unused in any calculation | Repurpose for long passing (when passing lanes land) OR drop from model + Lab UI |
-
-**Action**: Decide now or defer to next session after passing lanes implemented. If dropped, also remove from DB schema, Lab creation UI, and any player-creation defaults.
 
 ### Fit Multiplier Calibration ⚠️ — MONITORING
 
@@ -81,7 +95,11 @@
 
 ## Remaining Work (Priority Order)
 
-### 🔴 PHASE 6: Ball Possession & Passing Lanes (NEXT SESSION)
+### ✅ PHASE 6 — DONE (see Completed Work above)
+
+<details><summary>Original scope (kept for reference)</summary>
+
+### PHASE 6: Ball Possession & Passing Lanes
 
 **Scope**: Implement passing-phase duel where vision and short_passing drive chain success  
 **Deliverables**:
@@ -100,9 +118,15 @@
 
 **Estimated LOC**: ~200 (lane math) + ~150 (duel logic) + ~100 (probe)
 
+</details>
+
 ---
 
-### 🟡 PHASE 7: Dead Fields Decision & Cleanup
+### ✅ PHASE 7 — DONE (Option A: repurposed; see Completed Work above)
+
+<details><summary>Original scope (kept for reference)</summary>
+
+### PHASE 7: Dead Fields Decision & Cleanup
 
 **Scope**: Resolve fate of `passing`, `shooting`, `defense` fields  
 **Options**:
@@ -120,6 +144,8 @@
    - Remove from tools/motion_probe.py test squad defaults
 
 **Estimated LOC**: ~50 (if Drop) / ~20 (if Repurpose)
+
+</details>
 
 ---
 
@@ -190,9 +216,10 @@
 | `def_awareness` | break-defense duels, discipline (60%), Park Bus fit | ✅ Wired |
 | `finishing` | finish rolls, finisher routing, selfishness (+), chaos_thrives | ✅ Wired |
 | `composure` | GK saves, risk_appetite (inv), shot decision, Park Bus fit | ✅ Wired |
-| `shooting` | **DEAD** — repurpose or drop | ⚠️ Decision pending |
-| `defense` | **DEAD** — repurpose or drop | ⚠️ Decision pending |
-| `passing` | **DEAD** — repurpose or drop | ⚠️ Decision pending |
+| `shooting` | Reserved for shot types (drive/finesse/header) | ⚠️ Pending shot-types phase |
+| `defense` → `tackling` | Ball-winning duels (tackle vs carrier shield) | ✅ Wired (this pass) |
+| `passing` → `long_passing` | Switches of play, crosses | ✅ Wired (this pass) |
+| *(live)* `confidence` | Event-driven momentum, ±6% on all effective stats | ✅ Wired (this pass) |
 
 ### Traits → Formula → Effect (Complete Map)
 
@@ -203,7 +230,7 @@
 | `work_rate` | stamina | ball attraction, burn efficiency, fidget freq | ✅ Wired |
 | `system_loyalty` | (short_passing + vision)/2 | **25% of formation compliance** — low-loyalty players drift off script | ✅ Wired (this pass) |
 | `selfishness` | finishing − short_passing | shoot-vs-recycle, FWD drift | ✅ Wired |
-| `press_resistance` | composure·0.7 + passing·0.3 | shrug off possession pressure | ✅ Wired |
+| `press_resistance` | composure·0.7 + short_passing·0.3 | shrug off possession pressure | ✅ Wired (doc fixed: uses short_passing, not legacy passing) |
 | `chaos_thrives` | smooth from 65 finishing | finish bonus vs collapsed defenses | ✅ Wired |
 | `quickness` | (speed − 40)/50 | motion inertia — sharp vs curved paths | ✅ Wired (this pass) |
 
@@ -216,19 +243,16 @@
 | `tools/bias_probe.py` | Regression: symmetry, mirrored outcome, collapse reachability | ✅ Passing |
 | `tools/motion_probe.py` | 4-part motion verification: tactics, personality, speed, fit | ✅ Passing |
 | `tools/probe4.py` | Per-phase sanity (goals/duel/pace targets, no NaN) | ✅ Passing |
-| `tools/passing_probe.py` | *Future*: lane geometry, vision gating, interception blocking | 🔜 Phase 6 |
+| `tools/passing_probe.py` | Lanes, vision gating, interceptions, tackling, confidence, switches/crosses, funnel bands | ✅ Passing |
 | `tools/funnel_probe.py` | *Future*: possession/break/shot/goal rates per match volume | 🔜 Phase 9 |
 
 ---
 
 ## Summary for Next Session
 
-**Pick up here**: Implement ball passing and passing lanes  
-**Before that**: Review dead-fields decision (repurpose vs drop)  
-**Blocker**: None — all motion & attribute work is complete  
+**Pick up here**: Phase 8 (fit multiplier real-team testing) and Phase 9 funnel_probe,
+then shot types (unlocks `shooting`) and the full defending phase (GK distribution,
+clearances beyond cross-clearing).
 
-**Expected output from Phase 6**:
-- Passing duels working in funnel
-- Lanes gated by vision, blocked by interceptions
-- Passing probe showing lane counts, vision effect, interception rate
-- Funnel balance shift documented (pass rate, break rate, goal rate)
+**Blocker**: None — passing lanes, tackling, confidence, switches and crosses are
+all live and verified (`docs/passing-audit.md`, `tools/passing_probe.py`).

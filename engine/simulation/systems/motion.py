@@ -54,7 +54,10 @@ class MotionSystem:
             work_rate = p.traits.get('work_rate', 0.7)
 
             amplitude = role_amplitude.get(p.role, 1.0)
-            amplitude *= (0.5 + risk * 0.9) * (1.4 - discipline * 0.8)
+            # Wider spread than the first pass: a calm, disciplined player
+            # holds a visibly tighter station than an erratic risk-taker
+            # (the earlier 0.9/0.8 coefficients drowned in tracking noise).
+            amplitude *= (0.35 + risk * 1.25) * (1.5 - discipline * 1.0)
             busy = 0.7 + work_rate * 0.6
             p.motion_inertia = 0.80 - 0.12 * getattr(p, 'quickness', 0.5)
 
@@ -98,7 +101,10 @@ class MotionSystem:
             dist = math.hypot(dx, dy)
 
             stamina_pace = 0.6 + 0.4 * (p.current_stamina / 100.0)
-            max_speed = p.move_speed * stamina_pace * 2.0  # units per minute
+            # 1.45 keeps slow players brushing this ceiling during ordinary
+            # movement while quick ones stay under it — that headroom gap is
+            # what makes the speed rating readable on the pitch.
+            max_speed = p.move_speed * stamina_pace * 1.45  # units per minute
             if dist > CATCHUP_DISTANCE:
                 max_speed *= SPRINT_MULT
 

@@ -180,6 +180,16 @@ class Game:
             '_shot_freq': self.env.shot_frequency_modifier,
         })
 
+        for side in ('home', 'away'):
+            state.stats.update({
+                f'{side}_switches': 0,
+                f'{side}_crosses': 0,
+                f'{side}_crosses_completed': 0,
+                f'{side}_tackle_attempts': 0,
+                f'{side}_tackles_won': 0,
+                f'{side}_interceptions_won': 0,
+            })
+
         # Presentation-layer motion (separate RNG stream: never perturbs duels).
         motion = MotionSystem(team_home, team_away, state.field, match_seed=match_seed)
 
@@ -234,6 +244,11 @@ class Game:
                 if minute == self.half_time_min:
                     recovery.apply_halftime_recovery(team_home, state.stats['h_press'], home_team.name, log)
                     recovery.apply_halftime_recovery(team_away, state.stats['a_press'], away_team.name, log)
+
+                # Momentum cools between events: confidence eases back toward
+                # neutral so one bright/dark spell never colours a whole match.
+                for p in team_home + team_away:
+                    p.settle_confidence()
 
                 for p in team_home + team_away:
                     p.last_carried = False
@@ -419,32 +434,83 @@ class Game:
                     home_has_ball = not home_has_ball
                     continue
 
-                break_result = phases.run_break_phase(
-                    carrier,
-                    defender,
-                    break_att,
-                    break_def,
-                    minute,
-                    raw_zone,
-                    zone_key,
-                    def_side,
-                    state,
-                    log,
-                    add_impact,
-                    self.env.base_damage / max(def_mods['int'], 0.1),
-                    rng,
+                # The ball now travels through real space: a chain of passes
+                # along visible lanes, with tackles, interceptions, switches
+                # of play, and crosses all live along the way.
+                chain = phases.run_passing_chain(
+                    att_team, def_team, carrier, poss_att, poss_def, minute,
+                    att_side, def_side, state, log, add_impact, att_sty, rng,
                 )
 
-                if break_result['outcome'] == 'BLOCKED':
+                if chain['outcome'] == 'TURNOVER':
                     state.ball.release()
                     home_has_ball = not home_has_ball
                     continue
 
-                if break_result['outcome'] == 'SUCCESS':
-                    advance_carrier_position(carrier, zone_key, state.field, att_side, rng)
-                    scatter_defenders_to_positions(def_team, state.field, def_side, rng)
+                carrier = chain['carrier']
 
-                zone_health = break_result['zone_health']
+                # A worked chain drags defenders out of shape: each completed
+                # pass (and especially a switch) buys the break a little space.
+                chain_bonus = 1.0 + chain.get('completed', 0) * 0.04
+                if chain.get('switched'):
+                    chain_bonus += 0.06
+                break_att = min(break_att * chain_bonus, 3.5)
+
+                if chain['outcome'] == 'CROSS':
+                    # A completed cross bypasses the tactical break: the ball
+                    # is already in the box, the duel is now the finish.
+                    def_struct_dict = state.home_structure if def_side == 'home' else state.away_structure
+                    zone_health = def_struct_dict['zones']['Center']
+                else:
+                    # The chain may have moved the ball across the pitch;
+                    # the break duel belongs to whoever defends that space.
+                    if carrier.last_carried:
+                        moved_defender = phases._nearest_outfield_defender(carrier, def_team)
+                        if moved_defender is not None:
+                            defender = moved_defender
+
+                    break_result = phases.run_break_phase(
+                        carrier,
+                        defender,
+                        break_att,
+                        break_def,
+                        minute,
+                        raw_zone,
+                        zone_key,
+                        def_side,
+                        state,
+                        log,
+                        add_impact,
+                        self.env.base_damage / max(def_mods['int'], 0.1),
+                        rng,
+                    )
+
+                    if break_result['outcome'] == 'BLOCKED':
+                        state.ball.release()
+                        home_has_ball = not home_has_ball
+                        continue
+
+                    if break_result['outcome'] == 'SUCCESS':
+                        advance_carrier_position(carrier, zone_key, state.field, att_side, rng)
+                        scatter_defenders_to_positions(def_team, state.field, def_side, rng)
+
+                    zone_health = break_result['zone_health']
+
+                    # Broke through down a flank: the natural next ball is the
+                    # cross. Delivery rides long_passing; packed boxes clear it.
+                    if (break_result['outcome'] == 'SUCCESS'
+                            and zone_key in ('Left', 'Right')
+                            and rng.random() < 0.45):
+                        cross = phases._attempt_cross(
+                            carrier, att_team, def_team, poss_att, poss_def,
+                            minute, att_side, def_side, state, log, add_impact, rng,
+                        )
+                        if cross is not None:
+                            if cross['outcome'] == 'TURNOVER':
+                                state.ball.release()
+                                home_has_ball = not home_has_ball
+                                continue
+                            carrier = cross['carrier']
 
                 att_risk_val = state.stats['h_risk'] if att_side == 'home' else state.stats['a_risk']
                 att_tempo_val = state.stats['h_tempo'] if att_side == 'home' else state.stats['a_tempo']

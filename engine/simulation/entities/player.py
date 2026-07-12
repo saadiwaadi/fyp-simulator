@@ -25,9 +25,26 @@ class SimPlayer:
         self.interceptions = getattr(db_player, 'interceptions', 60)
         self.stamina = getattr(db_player, 'stamina', 70)
 
+        # Repurposed legacy fields (roadmap Phase 7, Option A):
+        #  - `passing` becomes long passing: switches of play and crosses.
+        #  - `defense` becomes tackling: winning the ball in the duel itself.
+        # Teams created before these were populated fall back to a blend of
+        # the modern stats so old squads keep playing sensibly.
+        raw_long = getattr(db_player, 'passing', 0) or 0
+        self.long_passing = raw_long if raw_long > 30 else int((self.short_passing + self.vision) / 2)
+        raw_tackle = getattr(db_player, 'defense', 0) or 0
+        self.tackling = raw_tackle if raw_tackle > 30 else int((self.def_awareness + self.interceptions) / 2)
+
         self.current_stamina = self.stamina
         self.last_carried = False
         self.match_form = rng.uniform(-0.05, 0.05)
+
+        # Confidence: a live, event-driven morale value. Starts near neutral
+        # (shaded by match form), rises with completed passes/tackles/goals,
+        # falls with turnovers/misses/being beaten, and always eases back
+        # toward neutral. Its stat effect is deliberately small (±6% at the
+        # extremes) so momentum colours duels without deciding them.
+        self.confidence = 0.5 + self.match_form
 
         self.traits = {
             'selfishness': round(max(0, (self.finishing - self.short_passing) / 100), 2),
@@ -119,9 +136,21 @@ class SimPlayer:
             self.current_stamina + effective_amount,
         )
 
+    def boost_confidence(self, amount):
+        self.confidence = min(0.95, self.confidence + amount)
+
+    def sap_confidence(self, amount):
+        self.confidence = max(0.05, self.confidence - amount)
+
+    def settle_confidence(self, rate=0.02):
+        """Ease confidence back toward neutral between events."""
+        self.confidence += (0.5 - self.confidence) * rate
+
     def get_effective_stat(self, stat_name, structural_mult=1.0):
         base = getattr(self, stat_name, 60)
         base *= (1.0 + self.match_form)
+        # Confidence shades output by at most ±6% at the extremes.
+        base *= 0.94 + self.confidence * 0.12
         # Gradual decay below 50 stamina instead of a cliff at 30.
         if self.current_stamina < 50:
             base *= 0.7 + 0.3 * (self.current_stamina / 50.0)

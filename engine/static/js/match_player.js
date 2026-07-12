@@ -60,6 +60,17 @@ function initPitch() {
     pitchState.fieldH = size[1];
     pitchEl.style.aspectRatio = `${size[0]} / ${size[1]}`;
 
+    // Transforms are computed in pixels (percentages inside translate() are
+    // relative to the DOT's own size, not the pitch). Cache the pitch box and
+    // re-measure on resize so dots track the field at any viewport size.
+    pitchState.pitchEl = pitchEl;
+    const measure = () => {
+        pitchState.pw = pitchEl.clientWidth;
+        pitchState.ph = pitchEl.clientHeight;
+    };
+    measure();
+    window.addEventListener('resize', measure);
+
     // Fallback numbering (older saved matches without roster numbers):
     // count up within each side in roster order, keeper first.
     const sideCounter = { home: 0, away: 0 };
@@ -111,21 +122,27 @@ function pitchTick(ts) {
     const frame = st.frames[st.ptr];
     const ease = 1 - Math.pow(0.0025, dt / 1000); // smooth chase toward frame
 
+    if (!st.pw || !st.ph) { // pitch wasn't laid out at init (e.g. hidden tab)
+        st.pw = st.pitchEl.clientWidth;
+        st.ph = st.pitchEl.clientHeight;
+        if (!st.pw || !st.ph) { requestAnimationFrame(pitchTick); return; }
+    }
+
     st.dots.forEach((d, idx) => {
         const [tx, ty] = frame.p[idx];
         d.x += (tx - d.x) * ease;
         d.y += (ty - d.y) * ease;
-        const pctX = (d.x / st.fieldW * 100);
-        const pctY = (d.y / st.fieldH * 100);
-        d.el.style.transform = `translate(calc(${pctX}% - 50%), calc(${pctY}% - 50%))`;
+        const px = (d.x / st.fieldW) * st.pw;
+        const py = (d.y / st.fieldH) * st.ph;
+        d.el.style.transform = `translate3d(${px}px, ${py}px, 0) translate(-50%, -50%)`;
     });
 
     const b = st.ballDot;
     b.x += (frame.b[0] - b.x) * ease * 1.4;
     b.y += (frame.b[1] - b.y) * ease * 1.4;
-    const ballPctX = (b.x / st.fieldW * 100);
-    const ballPctY = (b.y / st.fieldH * 100);
-    b.el.style.transform = `translate(calc(${ballPctX}% - 50%), calc(${ballPctY}% - 50%))`;
+    const bx = (b.x / st.fieldW) * st.pw;
+    const by = (b.y / st.fieldH) * st.ph;
+    b.el.style.transform = `translate3d(${bx}px, ${by}px, 0) translate(-50%, -50%)`;
 
     requestAnimationFrame(pitchTick);
 }

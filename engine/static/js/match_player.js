@@ -38,10 +38,18 @@ function initPitch() {
     const frames = readJsonScript('movement-frames');
     const roster = readJsonScript('movement-roster');
     const pitchEl = document.getElementById('pitch');
-    if (!frames || !roster || !frames.length || !pitchEl) {
-        // Older match without movement telemetry: hide the pitch panel.
-        const wrap = document.getElementById('pitch-wrap');
-        if (wrap) wrap.style.display = 'none';
+    if (!pitchEl) return;
+
+    if (!frames || !roster || !frames.length) {
+        // The pitch is a confirmed fixture of the execute screen: with no
+        // telemetry (a match simulated on an older engine build) it stays
+        // visible and says why it is empty instead of vanishing.
+        const fallback = document.createElement('div');
+        fallback.className = 'pitch-fallback';
+        fallback.innerHTML = '<strong>NO MOVEMENT TELEMETRY</strong>' +
+            '<span>This match was simulated before spatial tracking.<br>' +
+            'Run a new match from the Tactical Lab to see the live pitch.</span>';
+        pitchEl.appendChild(fallback);
         return;
     }
 
@@ -52,13 +60,23 @@ function initPitch() {
     pitchState.fieldH = size[1];
     pitchEl.style.aspectRatio = `${size[0]} / ${size[1]}`;
 
+    // Fallback numbering (older saved matches without roster numbers):
+    // count up within each side in roster order, keeper first.
+    const sideCounter = { home: 0, away: 0 };
+
     roster.forEach((p, idx) => {
+        sideCounter[p.side] = (sideCounter[p.side] || 0) + 1;
+        const num = p.num || sideCounter[p.side];
+
         const dot = document.createElement('div');
         dot.className = `player-dot ${p.side}` + (p.role === 'GK' ? ' gk' : '');
+        dot.textContent = num;
+
         const label = document.createElement('span');
         label.className = 'dot-label';
-        label.textContent = p.name;
+        label.textContent = `${num} · ${p.name}`;
         dot.appendChild(label);
+
         pitchEl.appendChild(dot);
         const [fx, fy] = frames[0].p[idx];
         pitchState.dots.push({ el: dot, x: fx, y: fy });
@@ -183,13 +201,13 @@ function processLogLine(line) {
     let p = document.createElement('div');
     p.className = 'log-line';
     p.innerText = line;
-    
-    if (line.includes('[GOAL]')) p.style.color = 'var(--neon-green)';
-    else if (line.includes('[TACTIC]')) p.style.color = 'var(--neon-blue)';
-    else if (line.includes('[TURNOVER]')) p.style.color = 'orange';
-    else if (line.includes('Integrity')) p.style.color = 'var(--neon-red)';
-    else p.style.color = 'var(--text)';
-    
+
+    if (line.includes('[GOAL]')) p.classList.add('log-goal');
+    else if (line.includes('[TACTIC]') || line.includes('[SWITCH]') || line.includes('[CROSS]')) p.classList.add('log-tactic');
+    else if (line.includes('[TURNOVER]') || line.includes('[LOOSE]')) p.classList.add('log-turnover');
+    else if (line.includes('[TACKLE]') || line.includes('[INTERCEPTED]') || line.includes('Integrity')) p.classList.add('log-danger');
+    else if (line.includes('[SAVE]') || line.includes('[CLAIMED]') || line.includes('[CLEARED]')) p.classList.add('log-save');
+
     terminalFeed.appendChild(p);
     terminalFeed.scrollTop = terminalFeed.scrollHeight; // Auto-scroll
 }

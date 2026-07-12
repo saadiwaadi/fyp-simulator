@@ -74,11 +74,16 @@ class MotionSystem:
             }
 
     def roster(self):
-        """Fixed-order roster matching the per-frame position arrays."""
+        """Fixed-order roster matching the per-frame position arrays.
+
+        Kit numbers follow classic convention per side: GK gets 1, then the
+        back line, midfield, and forwards count upward in squad order.
+        """
         out = []
         for side, team in (('home', self.home), ('away', self.away)):
-            for p in team:
-                out.append({'id': p.id, 'name': p.name, 'role': p.role, 'side': side})
+            for num, p in enumerate(team, start=1):
+                out.append({'id': p.id, 'name': p.name, 'role': p.role,
+                            'side': side, 'num': num})
         return out
 
     def tick_minute(self, minute, ball):

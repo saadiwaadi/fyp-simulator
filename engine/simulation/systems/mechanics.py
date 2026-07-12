@@ -121,7 +121,7 @@ SHOT_TYPES = {
     #            finishing, shooting, composure, difficulty
     'finesse': (0.80, 0.00, 0.20, 0.0),
     'drive':   (0.30, 0.70, 0.00, 3.0),
-    'header':  (0.60, 0.40, 0.00, 10.0),
+    'header':  (0.60, 0.40, 0.00, 6.0),
 }
 
 

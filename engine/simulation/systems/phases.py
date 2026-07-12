@@ -341,7 +341,7 @@ def run_shot_phase(att_team, def_team, gk, defender, zone_health, break_att, sta
     state.stats[f'{att_side}_shots_{shot_type}'] += 1
 
     minute_frac = minute / max(state.stats.get('max_minutes', 90), 1)
-    bonus = ((100 - zone_health) / 12.0) + (stat_adv / 15.0) - precision_penalty
+    bonus = 3.5 + ((100 - zone_health) / 12.0) + (stat_adv / 15.0) - precision_penalty
     result = mechanics.resolve_finish(carrier, gk, break_att, bonus, minute_frac, rng=rng,
                                       state=state, shot_type=shot_type)
 

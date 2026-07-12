@@ -4,6 +4,26 @@ import math
 # x = depth (0 = own goal, 1 = opponent goal)
 # y = width (0 = bottom, 1 = top)
 
+# ── Scenario shape: the whole block moves with the game state ─────────
+# Depth push per role in grid units on a reference 20-unit pitch (scaled
+# to the actual field), + width multiplier and ball-attraction multiplier.
+#   attack  — in possession: lines step up, pitch gets big, players hold
+#             structure instead of crowding the carrier
+#   defend  — out of possession: block drops and narrows, hunts the ball
+#   counter — just won it: midfield and forwards spring forward at once
+#   recover — just lost it: everyone sprints back into the narrow block
+PHASE_SHAPE = {
+    'attack':  {'push': {'GK': 0.4, 'DEF': 2.2, 'MID': 2.6, 'FWD': 2.2},
+                'width': 1.15, 'attraction': 0.55},
+    'defend':  {'push': {'GK': 0.0, 'DEF': -1.6, 'MID': -2.2, 'FWD': -1.2},
+                'width': 0.78, 'attraction': 1.30},
+    'counter': {'push': {'GK': 0.0, 'DEF': 0.6, 'MID': 2.4, 'FWD': 4.2},
+                'width': 1.05, 'attraction': 0.75},
+    'recover': {'push': {'GK': 0.0, 'DEF': -2.4, 'MID': -1.8, 'FWD': -0.4},
+                'width': 0.72, 'attraction': 1.15},
+}
+PHASE_REFERENCE_WIDTH = 20.0  # 11v11 pitch; smaller modes scale down
+
 ROLE_ANCHORS = {
     'home': {
         'GK':  (0.05, 0.5),
@@ -87,12 +107,21 @@ def get_formation_target(player, ball, side, field, tactical_style=None):
 
     # Layer 2: manager instructions shift the anchor
     depth_shift = (depth - 3) * 1.6
+
+    # Layer 2b: game scenario moves the whole block. In possession the
+    # lines step up and stretch; without it they drop and compact; on a
+    # turnover the shape springs (counter) or scrambles back (recover).
+    phase = style.get('phase', 'defend')
+    shape = PHASE_SHAPE.get(phase, PHASE_SHAPE['defend'])
+    scale = field.width / PHASE_REFERENCE_WIDTH
+    depth_shift += shape['push'].get(player.role, 0.0) * scale
+
     if side == 'home':
         anchor_x = min(anchor_x + depth_shift, field.width * 0.95)
     else:
         anchor_x = max(anchor_x - depth_shift, field.width * 0.05)
 
-    width_multiplier = 0.42 + (width / 5.0) * 0.95
+    width_multiplier = (0.42 + (width / 5.0) * 0.95) * shape['width']
 
     # Assign deterministic width lanes by role once per formation update.
     lane_map = style.get('_lane_map')
@@ -147,6 +176,9 @@ def get_formation_target(player, ball, side, field, tactical_style=None):
     attraction = base_attraction * (0.7 + player.traits['work_rate'] * 0.6)
     attraction *= (1.0 - player.traits['discipline'] * 0.3)
     attraction *= 1.0 + (press - 3) * 0.18
+    # In possession, players hold their structure and offer lanes instead
+    # of collapsing onto the carrier; off the ball they hunt it.
+    attraction *= shape['attraction']
 
     raw_target_x = anchor_x + (ball.x - anchor_x) * attraction
     raw_target_y = anchor_y + (ball.y - anchor_y) * attraction * 0.5

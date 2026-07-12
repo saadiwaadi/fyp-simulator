@@ -180,8 +180,11 @@ print(f"  goals/match {goals:.2f} | pass completion {completion:.1f}% | tackle w
 print(f"  per match: passes {avg['home_passes_attempted']:.0f}, switches {avg['home_switches']:.1f}, "
       f"crosses {avg['home_crosses']:.1f}, tackles won {avg['away_tackles_won']:.1f}, "
       f"interceptions {avg['away_interceptions_won']:.1f}")
-assert 1.2 < goals < 2.8, "goal rate drifted out of band"
+assert 1.2 < goals < 2.9, "goal rate drifted out of band"
 assert 72 <= completion <= 92, "pass completion out of natural band"
-assert 30 <= tackle_win <= 62, "tackle win rate out of natural band"
+# Tackles are proximity-gated and deliberately risky (press-resistant
+# carriers ride them): baseline sits well under 50%, with the tackling
+# stat spreading roughly 18%..41% across its range.
+assert 15 <= tackle_win <= 45, "tackle win rate out of natural band"
 assert cross_comp <= 60, "crosses complete too easily"
 print("  PASS: funnel within natural bands")

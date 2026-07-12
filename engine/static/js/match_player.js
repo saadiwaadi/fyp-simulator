@@ -22,11 +22,23 @@ document.addEventListener("DOMContentLoaded", () => {
     initPitch();
 });
 
-// --- LIVE PITCH (spatial tracking) ---
-// Renders movement frames exported by the engine. Dots ease toward each
-// frame's positions, and the frame pointer follows the commentary minute,
-// so motion stays smooth and in sync with the feed.
-const pitchState = { frames: null, roster: null, dots: [], ballDot: null, ptr: 0, subT: 0, lastTs: 0 };
+// --- LIVE PITCH (spatial tracking, canvas renderer) ---
+// One <canvas> repainted per animation frame: players, kit numbers, ball,
+// and a fading ball trail all land in a single paint, so there is no DOM
+// layout work per frame and no CSS coordinate-space pitfalls. The chalk
+// pitch markings stay as the styled div behind the (transparent) canvas.
+const pitchState = {
+    frames: null, roster: null, players: [], ball: null,
+    ptr: 0, subT: 0, lastTs: 0,
+    canvas: null, ctx: null, pw: 0, ph: 0, dpr: 1,
+    trail: [], mouse: null, hover: -1,
+};
+
+const PALETTE = {
+    homeFill: '#a51418', homeRing: '#fbf7ef', homeText: '#fbf7ef',
+    awayFill: '#fbf7ef', awayRing: '#252525', awayText: '#252525',
+    gkRing: '#c2a56b', gold: '#c2a56b', cream: '#fbf7ef', ink: '#252525',
+};
 
 function readJsonScript(id) {
     const el = document.getElementById(id);
@@ -54,49 +66,50 @@ function initPitch() {
     }
 
     const size = readJsonScript('pitch-size') || [20, 13];
-    pitchState.frames = frames;
-    pitchState.roster = roster;
-    pitchState.fieldW = size[0];
-    pitchState.fieldH = size[1];
+    const st = pitchState;
+    st.frames = frames;
+    st.roster = roster;
+    st.fieldW = size[0];
+    st.fieldH = size[1];
     pitchEl.style.aspectRatio = `${size[0]} / ${size[1]}`;
 
-    // Transforms are computed in pixels (percentages inside translate() are
-    // relative to the DOT's own size, not the pitch). Cache the pitch box and
-    // re-measure on resize so dots track the field at any viewport size.
-    pitchState.pitchEl = pitchEl;
+    const canvas = document.createElement('canvas');
+    canvas.className = 'pitch-canvas';
+    pitchEl.appendChild(canvas);
+    st.canvas = canvas;
+    st.ctx = canvas.getContext('2d');
+
     const measure = () => {
-        pitchState.pw = pitchEl.clientWidth;
-        pitchState.ph = pitchEl.clientHeight;
+        st.dpr = window.devicePixelRatio || 1;
+        st.pw = pitchEl.clientWidth;
+        st.ph = pitchEl.clientHeight;
+        canvas.width = Math.round(st.pw * st.dpr);
+        canvas.height = Math.round(st.ph * st.dpr);
     };
     measure();
     window.addEventListener('resize', measure);
 
+    canvas.addEventListener('mousemove', (e) => {
+        const r = canvas.getBoundingClientRect();
+        st.mouse = { x: e.clientX - r.left, y: e.clientY - r.top };
+    });
+    canvas.addEventListener('mouseleave', () => { st.mouse = null; st.hover = -1; });
+
     // Fallback numbering (older saved matches without roster numbers):
     // count up within each side in roster order, keeper first.
     const sideCounter = { home: 0, away: 0 };
-
-    roster.forEach((p, idx) => {
+    st.players = roster.map((p, idx) => {
         sideCounter[p.side] = (sideCounter[p.side] || 0) + 1;
-        const num = p.num || sideCounter[p.side];
-
-        const dot = document.createElement('div');
-        dot.className = `player-dot ${p.side}` + (p.role === 'GK' ? ' gk' : '');
-        dot.textContent = num;
-
-        const label = document.createElement('span');
-        label.className = 'dot-label';
-        label.textContent = `${num} · ${p.name}`;
-        dot.appendChild(label);
-
-        pitchEl.appendChild(dot);
         const [fx, fy] = frames[0].p[idx];
-        pitchState.dots.push({ el: dot, x: fx, y: fy });
+        return {
+            x: fx, y: fy,
+            num: p.num || sideCounter[p.side],
+            name: p.name,
+            side: p.side,
+            gk: p.role === 'GK',
+        };
     });
-
-    const ball = document.createElement('div');
-    ball.className = 'ball-dot';
-    pitchEl.appendChild(ball);
-    pitchState.ballDot = { el: ball, x: frames[0].b[0], y: frames[0].b[1] };
+    st.ball = { x: frames[0].b[0], y: frames[0].b[1] };
 
     requestAnimationFrame(pitchTick);
 }
@@ -110,7 +123,7 @@ function pitchTick(ts) {
     // Follow the commentary: advance toward the last frame of currentMinute,
     // pacing sub-frames so a minute of motion spreads across the ticker time.
     if (!isPaused) {
-        const framesPerMs = 4 / Math.max(speed * 2.2, 200); // ~4 frames per sim-minute
+        const framesPerMs = 8 / Math.max(speed * 2.2, 200); // 8 frames per sim-minute
         st.subT += dt * framesPerMs;
         while (st.subT >= 1 && st.ptr < st.frames.length - 1 && st.frames[st.ptr + 1].m <= currentMinute) {
             st.ptr++;
@@ -119,32 +132,124 @@ function pitchTick(ts) {
         st.subT = Math.min(st.subT, 1);
     }
 
-    const frame = st.frames[st.ptr];
-    const ease = 1 - Math.pow(0.0025, dt / 1000); // smooth chase toward frame
-
     if (!st.pw || !st.ph) { // pitch wasn't laid out at init (e.g. hidden tab)
-        st.pw = st.pitchEl.clientWidth;
-        st.ph = st.pitchEl.clientHeight;
+        st.pw = st.canvas.parentElement.clientWidth;
+        st.ph = st.canvas.parentElement.clientHeight;
         if (!st.pw || !st.ph) { requestAnimationFrame(pitchTick); return; }
+        st.canvas.width = Math.round(st.pw * st.dpr);
+        st.canvas.height = Math.round(st.ph * st.dpr);
     }
 
-    st.dots.forEach((d, idx) => {
+    const frame = st.frames[st.ptr];
+    const ease = 1 - Math.pow(0.0025, dt / 1000); // smooth chase toward frame
+    const toPx = (fx, fy) => [fx / st.fieldW * st.pw, fy / st.fieldH * st.ph];
+
+    st.players.forEach((d, idx) => {
         const [tx, ty] = frame.p[idx];
         d.x += (tx - d.x) * ease;
         d.y += (ty - d.y) * ease;
-        const px = (d.x / st.fieldW) * st.pw;
-        const py = (d.y / st.fieldH) * st.ph;
-        d.el.style.transform = `translate3d(${px}px, ${py}px, 0) translate(-50%, -50%)`;
     });
 
-    const b = st.ballDot;
+    const b = st.ball;
     b.x += (frame.b[0] - b.x) * ease * 1.4;
     b.y += (frame.b[1] - b.y) * ease * 1.4;
-    const bx = (b.x / st.fieldW) * st.pw;
-    const by = (b.y / st.fieldH) * st.ph;
-    b.el.style.transform = `translate3d(${bx}px, ${by}px, 0) translate(-50%, -50%)`;
 
+    // Ball trail: recent positions fade out — completed passes read as
+    // drawn lines across the turf.
+    const [bpx, bpy] = toPx(b.x, b.y);
+    if (!isPaused) {
+        st.trail.push({ x: bpx, y: bpy });
+        if (st.trail.length > 26) st.trail.shift();
+    }
+
+    drawPitch(st, frame, bpx, bpy);
     requestAnimationFrame(pitchTick);
+}
+
+function drawPitch(st, frame, bpx, bpy) {
+    const ctx = st.ctx;
+    ctx.setTransform(st.dpr, 0, 0, st.dpr, 0, 0);
+    ctx.clearRect(0, 0, st.pw, st.ph);
+
+    const r = Math.max(9, st.pw * 0.013);   // player token radius
+    const toPx = (fx, fy) => [fx / st.fieldW * st.pw, fy / st.fieldH * st.ph];
+
+    // trail under everything
+    for (let i = 1; i < st.trail.length; i++) {
+        const a = st.trail[i - 1], c = st.trail[i];
+        ctx.strokeStyle = `rgba(194, 165, 107, ${0.35 * (i / st.trail.length)})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(c.x, c.y);
+        ctx.stroke();
+    }
+
+    // hover hit-test (screen space)
+    st.hover = -1;
+    if (st.mouse) {
+        let best = 1e9;
+        st.players.forEach((d, i) => {
+            const [px, py] = toPx(d.x, d.y);
+            const dist = Math.hypot(st.mouse.x - px, st.mouse.y - py);
+            if (dist < r + 5 && dist < best) { best = dist; st.hover = i; }
+        });
+    }
+    st.canvas.style.cursor = st.hover >= 0 ? 'pointer' : 'default';
+
+    // players
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    st.players.forEach((d, i) => {
+        const [px, py] = toPx(d.x, d.y);
+        const home = d.side === 'home';
+
+        ctx.beginPath();
+        ctx.arc(px, py + 1.5, r, 0, Math.PI * 2);   // soft ground shadow
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.30)';
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(px, py, r, 0, Math.PI * 2);
+        ctx.fillStyle = home ? PALETTE.homeFill : PALETTE.awayFill;
+        ctx.fill();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = d.gk ? PALETTE.gkRing : (home ? PALETTE.homeRing : PALETTE.awayRing);
+        ctx.stroke();
+
+        ctx.fillStyle = home ? PALETTE.homeText : PALETTE.awayText;
+        ctx.font = `bold ${Math.round(r * 0.95)}px Consolas, monospace`;
+        ctx.fillText(d.num, px, py + 0.5);
+    });
+
+    // ball above players
+    ctx.beginPath();
+    ctx.arc(bpx, bpy, Math.max(4, r * 0.42), 0, Math.PI * 2);
+    ctx.fillStyle = PALETTE.cream;
+    ctx.fill();
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = PALETTE.ink;
+    ctx.stroke();
+
+    // hover label
+    if (st.hover >= 0) {
+        const d = st.players[st.hover];
+        const [px, py] = toPx(d.x, d.y);
+        const label = `${d.num} · ${d.name}`;
+        ctx.font = '600 11px "Segoe UI", sans-serif';
+        const w = ctx.measureText(label).width + 14;
+        const lx = Math.min(Math.max(px, w / 2 + 4), st.pw - w / 2 - 4);
+        const ly = Math.max(py - r - 20, 14);
+        ctx.fillStyle = PALETTE.cream;
+        ctx.strokeStyle = PALETTE.gold;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.roundRect(lx - w / 2, ly - 10, w, 20, 3);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = PALETTE.ink;
+        ctx.fillText(label, lx, ly + 0.5);
+    }
 }
 
 // --- MAIN PLAYBACK LOOP ---

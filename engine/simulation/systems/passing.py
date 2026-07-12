@@ -143,8 +143,21 @@ def pick_interceptor(lane):
     return best
 
 
+def _lane_point(carrier, lane, t):
+    """Point on the lane segment at fraction t (0=carrier, 1=receiver)."""
+    recv = lane['receiver']
+    return (carrier.x + (recv.x - carrier.x) * t,
+            carrier.y + (recv.y - carrier.y) * t)
+
+
 def resolve_pass(carrier, lane, kind, att_mult, def_mult, rng=None, state=None):
-    """Play the pass. Returns ('COMPLETE', None) or ('INTERCEPTED', defender).
+    """Play the pass.
+
+    Returns (result, interceptor, point):
+      ('COMPLETE',    None,     None)
+      ('INTERCEPTED', defender, (x, y))  — cut out ON the lane; the defender
+                                           steps to the interception point
+      ('INTERCEPTED', None,     (x, y))  — loose ball that dies mid-lane
 
     kind: 'short' | 'switch' | 'cross' — switches and crosses ride the
     repurposed long_passing attribute and carry more inherent risk.
@@ -162,8 +175,9 @@ def resolve_pass(carrier, lane, kind, att_mult, def_mult, rng=None, state=None):
             stray += 0.02
         stray *= 1.0 - (passer_val - 60.0) / 200.0  # better passers stray less
         if rng.random() < max(0.005, stray):
-            return 'INTERCEPTED', None  # loose ball, treated as turnover
-        return 'COMPLETE', None
+            # Overhit: the ball dies somewhere in the second half of the lane.
+            return 'INTERCEPTED', None, _lane_point(carrier, lane, rng.uniform(0.55, 1.1))
+        return 'COMPLETE', None, None
 
     # Contested lane: exposure (positioning) sets the baseline, then the
     # passer's technique duels the interceptor's reading of the play.
@@ -185,5 +199,11 @@ def resolve_pass(carrier, lane, kind, att_mult, def_mult, rng=None, state=None):
 
     _record_attribution(state, passer_val - def_base, att_noise - def_noise)
     if def_roll > att_roll:
-        return 'INTERCEPTED', interceptor
-    return 'COMPLETE', None
+        # The ball is cut out where the defender's body meets the lane:
+        # he steps IN to the line rather than the ball warping to him.
+        along = next((b['along'] for b in lane['blockers']
+                      if b['defender'] is interceptor), 0.5)
+        ix, iy = _lane_point(carrier, lane, along)
+        interceptor.x, interceptor.y = ix, iy
+        return 'INTERCEPTED', interceptor, (ix, iy)
+    return 'COMPLETE', None, None

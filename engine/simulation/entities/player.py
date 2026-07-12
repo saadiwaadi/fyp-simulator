@@ -69,8 +69,11 @@ class SimPlayer:
 
         # Pace comes from the SPEED attribute (audit: it previously derived
         # from stamina, leaving the speed rating with zero effect on motion).
-        # Range ~1.0 (40 pace) to ~1.5 (100 pace) keeps leash dynamics intact.
-        self.move_speed = 0.7 + (max(40, min(100, self.speed)) / 100.0) * 0.8
+        # Range ~2.0 (40 pace) to ~3.0 (100 pace) units per sim-minute: fast
+        # enough that a line genuinely steps up/drops inside one minute, so
+        # the scenario shapes (attack/defend/counter) are visible on the
+        # pitch instead of being eaten by slow convergence.
+        self.move_speed = 1.4 + (max(40, min(100, self.speed)) / 100.0) * 1.6
         # Quickness 0..1: how sharply a player accelerates and turns.
         self.quickness = max(0.0, min(1.0, (self.speed - 40) / 50.0))
 

@@ -214,10 +214,17 @@ body {
 .pitch-goal.goal-left { left: 0; }
 .pitch-goal.goal-right { right: 0; }
 
-/* players: shirt-number tokens
-   Anchored at the pitch origin; JS positions them with a pixel-space
-   translate3d — left/top stay 0 so transforms are the single source
-   of truth (and stay on the GPU). */
+/* canvas layer: players, numbers, ball, and trail render in one paint */
+.pitch-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2;
+}
+
+/* players: shirt-number tokens (legacy DOM fallback; the live pitch now
+   draws on canvas but these keep any cached pages presentable) */
 .player-dot {
     position: absolute;
     left: 0; top: 0;

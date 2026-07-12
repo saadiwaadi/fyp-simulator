@@ -102,11 +102,17 @@ def resolve_tackle(carrier, defender, att_mult, def_mult, pressure, rng=None, st
     tackle = (defender.get_effective_stat('tackling', def_mult) * 0.7
               + defender.get_effective_stat('def_awareness', def_mult) * 0.3)
 
+    # Press resistance is the anti-tackle trait: it widens the shield AND
+    # blunts the value of the defender's proximity, so pressing a
+    # press-resistant carrier is a losing game unless the tackler is
+    # genuinely better positioned and better rated.
+    press_res = carrier.traits.get('press_resistance', 0.0)
+
     # The carrier holds a small shield-edge (body between man and ball), the
-    # defender buys it back with positioning. Even duels land near 45% for
+    # defender buys it back with positioning. Even duels land near 40-45% for
     # the tackler, so diving in stays a real choice rather than a free win.
-    att_stat = _duel_value(control) + 5.0
-    def_stat = _duel_value(tackle) + pressure * 8.0
+    att_stat = _duel_value(control) + 3.0 + press_res * 10.0
+    def_stat = _duel_value(tackle) + pressure * 11.0 * (1.0 - press_res * 0.5)
     att_noise = rng.randint(0, 30)
     def_noise = rng.randint(0, 30)
 

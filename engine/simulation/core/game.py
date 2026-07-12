@@ -150,6 +150,9 @@ class Game:
             'a_depth': a_style.get('depth', 3),
             'a_width': a_style.get('width', 3),
             'timeline': [],
+            # Per-minute possession flags (1 = home on the ball). Feeds the
+            # scenario-shape tests and gives the UI a possession strip.
+            'possession_timeline': [],
             'fatigue_breach_min': None,
             'struct_breach_min': None,
             'break_timestamps': [],
@@ -204,6 +207,12 @@ class Game:
             state.stats['impact_detail'][name]['total'] += points
             state.stats['impact_detail'][name][category] += 1
 
+        # Transition tracking for scenario positioning: on a possession
+        # flip the winning side counters and the losing side recovers for
+        # a couple of minutes before both settle into attack/defend shape.
+        prev_home_has_ball = home_has_ball
+        transition_timer = 0
+
         consecutive_center = {'home': 0, 'away': 0}
         consecutive_flank = {
             'home': {'zone': None, 'count': 0},
@@ -216,7 +225,25 @@ class Game:
 
         for minute in range(1, self.max_minutes + 1):
             try:
+                # Fresh ball route each minute: phases log every real ball
+                # movement (passes, tackles, crosses, shots) and the motion
+                # layer replays them as actual travel along those lines.
+                state.ball.route = []
                 state.update_ball()
+
+                # Scenario phases: possession decides attack/defend; a fresh
+                # turnover overrides both with counter (winners) / recover
+                # (losers) while the transition window runs.
+                if home_has_ball != prev_home_has_ball:
+                    transition_timer = 2
+                    prev_home_has_ball = home_has_ball
+                if transition_timer > 0:
+                    transition_timer -= 1
+                    h_phase = 'counter' if home_has_ball else 'recover'
+                    a_phase = 'recover' if home_has_ball else 'counter'
+                else:
+                    h_phase = 'attack' if home_has_ball else 'defend'
+                    a_phase = 'defend' if home_has_ball else 'attack'
 
                 h_tactical = {
                     'press': state.stats['h_press'],
@@ -224,6 +251,7 @@ class Game:
                     'width': state.stats['h_width'],
                     'profile': h_profile.name,
                     'team_players': team_home,
+                    'phase': h_phase,
                 }
                 a_tactical = {
                     'press': state.stats['a_press'],
@@ -231,7 +259,9 @@ class Game:
                     'width': state.stats['a_width'],
                     'profile': a_profile.name,
                     'team_players': team_away,
+                    'phase': a_phase,
                 }
+                state.stats['possession_timeline'].append(1 if home_has_ball else 0)
 
                 # Update player positions
                 for p in team_home:
@@ -315,7 +345,7 @@ class Game:
                 carrier, defender, gk, raw_zone = duellists
 
                 carrier.last_carried = True
-                state.ball.attach_to_owner(carrier)
+                state.ball.attach_to_owner(carrier, carrier.x, carrier.y)
                 zone_key = ZONE_MAP.get(raw_zone, 'Center')
 
                 if zone_key == 'Center':
@@ -499,6 +529,8 @@ class Game:
                     if break_result['outcome'] == 'SUCCESS':
                         advance_carrier_position(carrier, zone_key, state.field, att_side, rng)
                         scatter_defenders_to_positions(def_team, state.field, def_side, rng)
+                        # The carrier drives the ball into the final third.
+                        state.ball.log_move(carrier.x, carrier.y, 'carry')
 
                     zone_health = break_result['zone_health']
 

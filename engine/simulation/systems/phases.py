@@ -7,6 +7,10 @@ from . import recovery
 from ..commentary import narrator
 from ..ai.decision import should_attempt_shot, position_danger, defensive_pressure
 
+# A defender must be within this many grid units of the carrier to attempt
+# a tackle — pressure from the rest of the team never wins the ball remotely.
+TACKLE_RADIUS = 1.8
+
 
 def run_possession_phase(carrier, defender, poss_att, poss_def, minute, raw_zone, zone_key,
                          att_side, def_side, state, log, add_impact, rng=None):
@@ -91,7 +95,7 @@ def _attempt_cross(carrier, att_team, def_team, att_mult, def_mult, minute,
                 lane['openness'] = max(0.0, 1.0 - (1.0 - mark_dist / 3.5) * 0.75)
 
     state.stats[f'{att_side}_crosses'] += 1
-    result, interceptor = passing.resolve_pass(
+    result, interceptor, cut_point = passing.resolve_pass(
         carrier, lane, 'cross', att_mult, def_mult, rng=rng, state=state)
 
     if result == 'COMPLETE':
@@ -102,6 +106,7 @@ def _attempt_cross(carrier, att_team, def_team, att_mult, def_mult, minute,
         carrier.last_carried = False
         target.last_carried = True
         state.ball.attach_to_owner(target, target.x, target.y)
+        state.ball.log_move(target.x, target.y, 'cross')
         log.append(f"{minute}' [CROSS] {carrier.name} whips it in -- {target.name} attacks the ball!")
         return {'outcome': 'CROSS', 'carrier': target}
 
@@ -110,6 +115,8 @@ def _attempt_cross(carrier, att_team, def_team, att_mult, def_mult, minute,
         add_impact(defender.name, 'def_stops', 2)
         defender.boost_confidence(0.03)
         state.stats[f'{def_side}_interceptions_won'] += 1
+        clear_x, clear_y = cut_point if cut_point is not None else (defender.x, defender.y)
+        state.ball.log_move(clear_x, clear_y, 'clearance')
         log.append(f"{minute}' [CLEARED] {defender.name} heads {carrier.name}'s cross away.")
     carrier.sap_confidence(0.02)
     add_impact(carrier.name, 'turnovers', -1)
@@ -136,21 +143,32 @@ def run_passing_chain(att_team, def_team, carrier, att_mult, def_mult, minute,
     completed = 0
 
     for _ in range(max_passes):
-        # 1) Ball-winning: a defender close enough may dive in. Positioning
-        # opens the door; the tackle duel decides it.
+        # 1) Ball-winning: only a defender genuinely AT the carrier can dive
+        # in — team pressure alone never wins a ball from across the pitch.
+        # Positioning opens the door; the tackle duel decides it.
         pressure = defensive_pressure(carrier, def_team)
         if pressure > 0.6:
             tackler = _nearest_outfield_defender(carrier, def_team)
-            if tackler is not None and rng.random() < (pressure - 0.6) * 0.8:
+            tackler_dist = (math.hypot(carrier.x - tackler.x, carrier.y - tackler.y)
+                            if tackler is not None else float('inf'))
+            if tackler_dist <= TACKLE_RADIUS and rng.random() < (pressure - 0.6) * 0.8:
                 state.stats[f'{def_side}_tackle_attempts'] += 1
+                # Closeness feeds the duel: a toe-to-toe challenge carries
+                # more bite than one from the edge of tackling range.
+                closeness = 1.0 - (tackler_dist / TACKLE_RADIUS)
+                duel_pressure = min(1.0, pressure * 0.5 + closeness * 0.5)
                 if mechanics.resolve_tackle(carrier, tackler, att_mult, def_mult,
-                                            pressure, rng=rng, state=state):
+                                            duel_pressure, rng=rng, state=state):
                     state.stats[f'{def_side}_tackles_won'] += 1
                     add_impact(tackler.name, 'def_stops', 3)
                     add_impact(carrier.name, 'turnovers', -1)
                     tackler.boost_confidence(0.05)
                     carrier.sap_confidence(0.04)
+                    # The ball comes off the carrier's feet at the point of
+                    # contact — the tackler emerges with it right there.
+                    tackler.x, tackler.y = carrier.x, carrier.y
                     state.ball.attach_to_owner(tackler, tackler.x, tackler.y)
+                    state.ball.log_move(tackler.x, tackler.y, 'tackle')
                     log.append(f"{minute}' [TACKLE] {tackler.name} times the challenge and strips {carrier.name}!")
                     return {'outcome': 'TURNOVER'}
                 # Rode the challenge: the carrier grows, the lunging defender pays.
@@ -176,7 +194,7 @@ def run_passing_chain(att_team, def_team, carrier, att_mult, def_mult, minute,
         kind = 'switch' if passing.is_switch(lane, field) else 'short'
         state.stats[f'{att_side}_passes_attempted'] += 1
 
-        result, interceptor = passing.resolve_pass(
+        result, interceptor, cut_point = passing.resolve_pass(
             carrier, lane, kind, att_mult, def_mult, rng=rng, state=state)
 
         if result == 'INTERCEPTED':
@@ -186,10 +204,15 @@ def run_passing_chain(att_team, def_team, carrier, att_mult, def_mult, minute,
                 state.stats[f'{def_side}_interceptions_won'] += 1
                 add_impact(interceptor.name, 'def_stops', 3)
                 interceptor.boost_confidence(0.05)
+                # resolve_pass stepped the defender onto the lane; the ball
+                # dies at that point of the line, in his possession.
                 state.ball.attach_to_owner(interceptor, interceptor.x, interceptor.y)
+                state.ball.log_move(interceptor.x, interceptor.y, 'interception')
                 log.append(f"{minute}' [INTERCEPTED] {interceptor.name} reads the "
                            f"{'switch' if kind == 'switch' else 'pass'} and steps in.")
             else:
+                if cut_point is not None:
+                    state.ball.log_move(cut_point[0], cut_point[1], 'loose')
                 log.append(f"{minute}' [LOOSE] {carrier.name}'s ball runs away from everyone.")
             return {'outcome': 'TURNOVER'}
 
@@ -201,6 +224,7 @@ def run_passing_chain(att_team, def_team, carrier, att_mult, def_mult, minute,
         carrier.last_carried = False
         receiver.last_carried = True
         state.ball.attach_to_owner(receiver, receiver.x, receiver.y)
+        state.ball.log_move(receiver.x, receiver.y, 'switch' if kind == 'switch' else 'pass')
 
         if kind == 'switch':
             switched = True
@@ -286,6 +310,7 @@ def run_shot_phase(att_team, def_team, gk, defender, zone_health, break_att, sta
         # but plenty of good deliveries are still claimed or scrambled
         # behind before the attacker truly connects.
         if rng.random() > 0.50:
+            state.ball.log_move(gk.x, gk.y, 'claim')
             log.append(f"{minute}' [CLAIMED] {gk.name} rises above the pack and gathers.")
             add_impact(gk.name, 'def_stops', 2)
             gk.boost_confidence(0.02)
@@ -339,6 +364,12 @@ def run_shot_phase(att_team, def_team, gk, defender, zone_health, break_att, sta
 
     state.stats[f'{att_side}_shots'] += 1
     state.stats[f'{att_side}_shots_{shot_type}'] += 1
+
+    # The strike travels: route the ball at the goal mouth so the rendered
+    # ball actually flies goalward on every attempt.
+    goal_x = float(state.field.width) if att_side == 'home' else 0.0
+    goal_y = state.field.height / 2.0 + rng.uniform(-1.0, 1.0)
+    state.ball.log_move(goal_x, goal_y, 'shot')
 
     minute_frac = minute / max(state.stats.get('max_minutes', 90), 1)
     bonus = 3.5 + ((100 - zone_health) / 12.0) + (stat_adv / 15.0) - precision_penalty

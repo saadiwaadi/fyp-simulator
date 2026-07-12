@@ -16,7 +16,7 @@ import math
 import random
 
 TICKS_PER_MINUTE = 8
-FRAME_STRIDE = 2          # record every Nth tick -> 4 frames per sim-minute
+FRAME_STRIDE = 1          # record every tick -> 8 frames per sim-minute
 SEPARATION_RADIUS = 0.9   # grid units
 SEPARATION_PUSH = 0.35
 CATCHUP_DISTANCE = 2.5    # beyond this, the player breaks into a sprint
@@ -35,6 +35,10 @@ class MotionSystem:
         self.all_players = list(team_home) + list(team_away)
         self.t = 0.0
         self.frames = []
+        # Rendered ball position: travels along the minute's route polyline
+        # (passes, tackles, crosses, shots) instead of snapping to owners.
+        self.ball_rx = None
+        self.ball_ry = None
 
         role_amplitude = {'GK': 0.35, 'DEF': 0.8, 'MID': 1.15, 'FWD': 1.25}
 
@@ -87,11 +91,63 @@ class MotionSystem:
         return out
 
     def tick_minute(self, minute, ball):
+        waypoints = self._ball_waypoints(ball)
         for i in range(TICKS_PER_MINUTE):
             self.t += 1.0 / TICKS_PER_MINUTE
             self._step()
+            self._move_ball(waypoints, (i + 1) / TICKS_PER_MINUTE)
             if i % FRAME_STRIDE == 0:
-                self._record(minute, ball)
+                self._record(minute)
+
+    def _ball_waypoints(self, ball):
+        """The minute's ball journey: from where it was last rendered,
+        through every logged movement (passes along their lanes, tackles at
+        the point of contact, interceptions on the line, shots at goal),
+        ending at whoever holds it now."""
+        if self.ball_rx is None:
+            owner = getattr(ball, 'owner', None)
+            if owner is not None and hasattr(owner, 'rx'):
+                self.ball_rx, self.ball_ry = float(owner.rx), float(owner.ry)
+            else:
+                self.ball_rx, self.ball_ry = float(ball.x), float(ball.y)
+
+        pts = [(self.ball_rx, self.ball_ry)]
+        for ev in getattr(ball, 'route', []) or []:
+            pts.append((float(ev['x']), float(ev['y'])))
+
+        # Settle on the current holder's RENDERED position (players wander
+        # around their logic spot) so the ball visibly sits at his feet.
+        owner = getattr(ball, 'owner', None)
+        if owner is not None:
+            end = (float(getattr(owner, 'rx', owner.x)),
+                   float(getattr(owner, 'ry', owner.y)))
+        else:
+            end = (float(ball.x), float(ball.y))
+        if math.hypot(end[0] - pts[-1][0], end[1] - pts[-1][1]) > 0.4:
+            pts.append(end)
+        return pts
+
+    def _move_ball(self, pts, progress):
+        """Place the rendered ball at `progress` (0..1) along the polyline."""
+        if len(pts) == 1:
+            self.ball_rx, self.ball_ry = pts[0]
+            return
+        lengths = [math.hypot(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1])
+                   for i in range(len(pts) - 1)]
+        total = sum(lengths)
+        if total < 1e-6:
+            self.ball_rx, self.ball_ry = pts[-1]
+            return
+        target = min(progress, 1.0) * total
+        run = 0.0
+        for i, seg in enumerate(lengths):
+            if run + seg >= target or i == len(lengths) - 1:
+                f = (target - run) / seg if seg > 1e-9 else 1.0
+                f = max(0.0, min(1.0, f))
+                self.ball_rx = pts[i][0] + (pts[i + 1][0] - pts[i][0]) * f
+                self.ball_ry = pts[i][1] + (pts[i + 1][1] - pts[i][1]) * f
+                return
+            run += seg
 
     def _step(self):
         dt = 1.0 / TICKS_PER_MINUTE
@@ -158,15 +214,9 @@ class MotionSystem:
                 b.rx += nx * push * 0.5
                 b.ry += ny * push * 0.5
 
-    def _record(self, minute, ball):
-        owner = getattr(ball, 'owner', None)
-        if owner is not None and hasattr(owner, 'rx'):
-            bx, by = owner.rx, owner.ry
-        else:
-            bx, by = ball.x, ball.y
-
+    def _record(self, minute):
         self.frames.append({
             'm': minute,
             'p': [[round(p.rx, 2), round(p.ry, 2)] for p in self.all_players],
-            'b': [round(float(bx), 2), round(float(by), 2)],
+            'b': [round(float(self.ball_rx), 2), round(float(self.ball_ry), 2)],
         })

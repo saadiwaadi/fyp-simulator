@@ -10,6 +10,15 @@ class Ball:
 
         self.owner = None
 
+        # Route of real ball movements this sim-minute (passes, tackles,
+        # interceptions, crosses, shots). The motion layer replays it so the
+        # rendered ball travels along the actual lines of play instead of
+        # teleporting between owners.
+        self.route = []
+
+    def log_move(self, x, y, kind):
+        self.route.append({'x': float(x), 'y': float(y), 'kind': kind})
+
     def position(self):
         return (self.x, self.y, self.z)
 

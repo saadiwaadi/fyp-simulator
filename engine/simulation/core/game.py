@@ -12,7 +12,7 @@ from ..systems import phases
 from ..systems.motion import MotionSystem
 from ..systems.movement import place_player, arrive, apply_velocity
 from ..constants import FATIGUE_BREACH_STAMINA, STRUCT_BREACH_INTEGRITY
-from .formation import get_formation_target
+from .formation import get_formation_target, resolve_formation, assign_slots
 
 
 ZONE_MAP = {'L': 'Left', 'C': 'Center', 'R': 'Right'}
@@ -120,6 +120,14 @@ class Game:
         h_style = getattr(home_team, 'sys_style', {}) or {}
         a_style = getattr(away_team, 'sys_style', {}) or {}
 
+        # Formations: resolve per mode (invalid/missing names fall back to
+        # the mode default) and assign each player his slot once. The slot
+        # map is the positional skeleton every minute builds on.
+        h_form_name, h_slots = resolve_formation(self.mode, h_style.get('formation'))
+        a_form_name, a_slots = resolve_formation(self.mode, a_style.get('formation'))
+        h_slot_cache = assign_slots(team_home, h_slots)
+        a_slot_cache = assign_slots(team_away, a_slots)
+
         # Team quality from attributes that actually play (audit: the legacy
         # shooting/defense fields appear nowhere else in the simulation, so a
         # squad rated on them could out-rate its real on-pitch ability).
@@ -150,6 +158,8 @@ class Game:
             'a_depth': a_style.get('depth', 3),
             'a_width': a_style.get('width', 3),
             'timeline': [],
+            'h_formation': h_form_name,
+            'a_formation': a_form_name,
             # Per-minute possession flags (1 = home on the ball). Feeds the
             # scenario-shape tests and gives the UI a possession strip.
             'possession_timeline': [],
@@ -252,6 +262,9 @@ class Game:
                     'profile': h_profile.name,
                     'team_players': team_home,
                     'phase': h_phase,
+                    'formation': h_style.get('formation'),
+                    'mode': self.mode,
+                    '_slot_map': h_slot_cache,
                 }
                 a_tactical = {
                     'press': state.stats['a_press'],
@@ -260,6 +273,9 @@ class Game:
                     'profile': a_profile.name,
                     'team_players': team_away,
                     'phase': a_phase,
+                    'formation': a_style.get('formation'),
+                    'mode': self.mode,
+                    '_slot_map': a_slot_cache,
                 }
                 state.stats['possession_timeline'].append(1 if home_has_ball else 0)
 

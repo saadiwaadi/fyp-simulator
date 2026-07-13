@@ -309,7 +309,10 @@ def run_shot_phase(att_team, def_team, gk, defender, zone_health, break_att, sta
         # must play it first time. No lay-off, no recycling out of it —
         # but plenty of good deliveries are still claimed or scrambled
         # behind before the attacker truly connects.
-        if rng.random() > 0.50:
+        # Command of the box is a real attribute now: a dominant aerial
+        # keeper claims more deliveries, a hesitant one stays rooted.
+        claim_chance = 0.30 + (gk.get_effective_stat('gk_aerials') / 100.0) * 0.35
+        if rng.random() < claim_chance:
             state.ball.log_move(gk.x, gk.y, 'claim')
             log.append(f"{minute}' [CLAIMED] {gk.name} rises above the pack and gathers.")
             add_impact(gk.name, 'def_stops', 2)
@@ -372,7 +375,7 @@ def run_shot_phase(att_team, def_team, gk, defender, zone_health, break_att, sta
     state.ball.log_move(goal_x, goal_y, 'shot')
 
     minute_frac = minute / max(state.stats.get('max_minutes', 90), 1)
-    bonus = 3.5 + ((100 - zone_health) / 12.0) + (stat_adv / 15.0) - precision_penalty
+    bonus = 1.2 + ((100 - zone_health) / 12.0) + (stat_adv / 15.0) - precision_penalty
     result = mechanics.resolve_finish(carrier, gk, break_att, bonus, minute_frac, rng=rng,
                                       state=state, shot_type=shot_type)
 

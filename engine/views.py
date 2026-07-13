@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from .models import Team, Player, Match
 from .simulation.engine import play_match
 from .simulation.analyst import generate_post_match_report
+from .simulation.core.formation import FORMATIONS
 
 # --- PHASE 0: DASHBOARD ---
 def dashboard(request):
@@ -46,7 +47,10 @@ def tactical_lab(request):
                 'width': clamp(request.POST.get('sys_width', 3)),
                 'depth': clamp(request.POST.get('sys_depth', 3)),
                 'press': clamp(request.POST.get('sys_press', 3)),
-                'risk':  clamp(request.POST.get('sys_risk', 3))
+                'risk':  clamp(request.POST.get('sys_risk', 3)),
+                # Engine validates against the mode's formation table and
+                # falls back to the mode default on anything unknown.
+                'formation': request.POST.get('sys_formation', '') or '',
             }
             request.session.modified = True
 
@@ -103,7 +107,7 @@ def tactical_lab(request):
     current_players = Player.objects.filter(team_id=active_team_id) if active_team_id else []
     
     current_tactics = request.session.get('team_tactics', {}).get(str(active_team_id), {
-        'tempo': 3, 'width': 3, 'depth': 3, 'press': 3, 'risk': 3
+        'tempo': 3, 'width': 3, 'depth': 3, 'press': 3, 'risk': 3, 'formation': ''
     })
 
     context = {
@@ -111,6 +115,8 @@ def tactical_lab(request):
         'players': current_players,
         'active_edit_team_id': active_team_id,
         'current_tactics': current_tactics,
+        'formations_5v5': list(FORMATIONS['5v5'].keys()),
+        'formations_11v11': list(FORMATIONS['11v11'].keys()),
     }
     return render(request, 'engine/lab.html', context)
 

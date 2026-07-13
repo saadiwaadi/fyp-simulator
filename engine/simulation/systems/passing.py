@@ -181,11 +181,17 @@ def resolve_pass(carrier, lane, kind, att_mult, def_mult, rng=None, state=None):
 
     # Contested lane: exposure (positioning) sets the baseline, then the
     # passer's technique duels the interceptor's reading of the play.
+    # Crosses are a marking duel, not a lane read: the defender on the
+    # target wins it with man-marking and his aerial game.
     exposure = 1.0 - lane['openness']
-    read_val = _duel_value(
-        interceptor.get_effective_stat('interceptions', def_mult) * 0.6
-        + interceptor.get_effective_stat('def_awareness', def_mult) * 0.4
-    )
+    if kind == 'cross':
+        read = (interceptor.get_effective_stat('marking', def_mult) * 0.45
+                + interceptor.get_effective_stat('heading', def_mult) * 0.30
+                + interceptor.get_effective_stat('def_awareness', def_mult) * 0.25)
+    else:
+        read = (interceptor.get_effective_stat('interceptions', def_mult) * 0.6
+                + interceptor.get_effective_stat('def_awareness', def_mult) * 0.4)
+    read_val = _duel_value(read)
     # Crosses are the hardest ball in the game: even a good delivery is a
     # 50/50 against a set marker, which is what keeps them a choice rather
     # than a cheat code past the break duel.

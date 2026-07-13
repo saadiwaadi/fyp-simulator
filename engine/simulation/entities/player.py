@@ -44,6 +44,33 @@ class SimPlayer:
         raw_shooting = getattr(db_player, 'shooting', 0) or 0
         self.shooting = raw_shooting if raw_shooting > 30 else int((self.finishing + self.speed) / 2)
 
+        # Specialist stats (league-level data). Zero/absent means the squad
+        # predates them: derive a role-sensible stand-in so nothing breaks.
+        raw_drb = getattr(db_player, 'dribbling', 0) or 0
+        self.dribbling = raw_drb if raw_drb > 0 else int(
+            self.short_passing * 0.45 + self.composure * 0.30 + self.speed * 0.25)
+        raw_hed = getattr(db_player, 'heading', 0) or 0
+        if raw_hed > 0:
+            self.heading = raw_hed
+        elif self.role == 'FWD':
+            self.heading = int(self.finishing * 0.55 + self.composure * 0.20 + 20)
+        elif self.role == 'DEF':
+            self.heading = int(self.def_awareness * 0.50 + self.composure * 0.20 + 22)
+        else:
+            self.heading = int(self.finishing * 0.30 + self.def_awareness * 0.30 + 25)
+        raw_mrk = getattr(db_player, 'marking', 0) or 0
+        self.marking = raw_mrk if raw_mrk > 0 else int(
+            self.def_awareness * 0.60 + self.interceptions * 0.30)
+
+        # Goalkeeping triple: keepers without data fall back to composure,
+        # which is exactly what saves used to run on.
+        raw_ref = getattr(db_player, 'gk_reflexes', 0) or 0
+        raw_han = getattr(db_player, 'gk_handling', 0) or 0
+        raw_aer = getattr(db_player, 'gk_aerials', 0) or 0
+        self.gk_reflexes = raw_ref if raw_ref > 0 else int(self.composure * 0.95 + 3)
+        self.gk_handling = raw_han if raw_han > 0 else int(self.composure * 0.92)
+        self.gk_aerials = raw_aer if raw_aer > 0 else int(self.composure * 0.90)
+
         self.current_stamina = self.stamina
         self.last_carried = False
         self.match_form = rng.uniform(-0.05, 0.05)

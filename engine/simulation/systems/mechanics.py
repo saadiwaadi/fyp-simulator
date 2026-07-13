@@ -96,9 +96,10 @@ def resolve_tackle(carrier, defender, att_mult, def_mult, pressure, rng=None, st
     """
     rng = rng or random
 
-    # Carrier shields with a blend of close passing control and composure.
-    control = (carrier.get_effective_stat('short_passing', att_mult) * 0.6
-               + carrier.get_effective_stat('composure', att_mult) * 0.4)
+    # Carrier shields with close control first, nerve and touch behind it.
+    control = (carrier.get_effective_stat('dribbling', att_mult) * 0.5
+               + carrier.get_effective_stat('composure', att_mult) * 0.3
+               + carrier.get_effective_stat('short_passing', att_mult) * 0.2)
     tackle = (defender.get_effective_stat('tackling', def_mult) * 0.7
               + defender.get_effective_stat('def_awareness', def_mult) * 0.3)
 
@@ -122,12 +123,22 @@ def resolve_tackle(carrier, defender, att_mult, def_mult, pressure, rng=None, st
 
 # Shot types: which attributes carry the strike, and how much harder it is
 # to score than a clean placed finish. Drives ride the repurposed `shooting`
-# (shot power) field; headers are the toughest chance in the game.
+# (shot power) field; headers ride the real `heading` stat and remain the
+# toughest chance in the game.
 SHOT_TYPES = {
     #            finishing, shooting, composure, difficulty
     'finesse': (0.80, 0.00, 0.20, 0.0),
     'drive':   (0.30, 0.70, 0.00, 3.0),
-    'header':  (0.60, 0.40, 0.00, 6.0),
+    'header':  (0.35, 0.10, 0.00, 6.0),   # + heading 0.55, see below
+}
+HEADER_HEADING_WEIGHT = 0.55
+
+# How the keeper meets each shot: reflexes stop placed finishes, handling
+# holds the drilled ones, aerial command owns everything in the air.
+GK_SHOT_BLEND = {
+    'finesse': (('gk_reflexes', 0.60), ('composure', 0.25), ('gk_handling', 0.15)),
+    'drive':   (('gk_handling', 0.45), ('gk_reflexes', 0.40), ('composure', 0.15)),
+    'header':  (('gk_aerials', 0.50), ('gk_reflexes', 0.35), ('composure', 0.15)),
 }
 
 
@@ -142,13 +153,17 @@ def resolve_finish(striker, gk, att_mult, integrity_bonus, minute_frac, rng=None
     base_att_val = (striker.get_effective_stat('finishing', att_mult) * fin_w
                     + striker.get_effective_stat('shooting', att_mult) * sho_w
                     + striker.get_effective_stat('composure', att_mult) * com_w)
+    if shot_type == 'header':
+        base_att_val += striker.get_effective_stat('heading', att_mult) * HEADER_HEADING_WEIGHT
     base_att_val -= difficulty
 
     if integrity_bonus > 5:
         base_att_val *= 1.0 + (chaos_trait * 0.15)
 
     att_val = _duel_value(base_att_val)
-    def_val = _duel_value(float(gk.get_effective_stat('composure'))) * 1.05
+    gk_blend = GK_SHOT_BLEND.get(shot_type, GK_SHOT_BLEND['finesse'])
+    gk_read = sum(gk.get_effective_stat(stat) * w for stat, w in gk_blend)
+    def_val = _duel_value(float(gk_read)) * 1.05
 
     final_bonus = integrity_bonus
     if minute_frac < EARLY_FINISH_FRACTION:

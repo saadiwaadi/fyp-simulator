@@ -1435,6 +1435,24 @@
                     </select>
                 </div>
 
+                <!-- FORMATION (options swap with the protocol) -->
+                <div class="header-group">
+                    <span class="header-label">Formation</span>
+                    <select name="sys_formation" class="ctrl-select" id="sel-formation"
+                            data-current="{{ current_tactics.formation|default:'' }}">
+                        <optgroup label="5-a-side" id="grp-form-5v5">
+                            {% for f in formations_5v5 %}
+                            <option value="{{ f }}" {% if current_tactics.formation == f %}selected{% endif %}>{{ f }}</option>
+                            {% endfor %}
+                        </optgroup>
+                        <optgroup label="11-a-side" id="grp-form-11v11">
+                            {% for f in formations_11v11 %}
+                            <option value="{{ f }}" {% if current_tactics.formation == f %}selected{% endif %}>{{ f }}</option>
+                            {% endfor %}
+                        </optgroup>
+                    </select>
+                </div>
+
                 <!-- Slider hidden inputs (updated by JS) -->
                 <input type="hidden" name="sys_tempo" id="inp-tempo" value="{{ current_tactics.tempo|default:3 }}">
                 <input type="hidden" name="sys_width" id="inp-width" value="{{ current_tactics.width|default:3 }}">
@@ -2087,6 +2105,33 @@
                 if (saved) el.value = saved;
                 el.addEventListener('change', () => sessionStorage.setItem(id, el.value));
             });
+
+            // Formation options follow the protocol: only the active mode's
+            // shapes are offered, and the selection snaps to a valid one.
+            const modeSel = document.getElementById('sel-mode');
+            const formSel = document.getElementById('sel-formation');
+            function syncFormationOptions() {
+                if (!modeSel || !formSel) return;
+                const mode = modeSel.value;
+                const g5 = document.getElementById('grp-form-5v5');
+                const g11 = document.getElementById('grp-form-11v11');
+                if (g5) g5.style.display = (mode === '5v5') ? '' : 'none';
+                if (g11) g11.style.display = (mode === '11v11') ? '' : 'none';
+                const active = (mode === '5v5') ? g5 : g11;
+                if (active) {
+                    const opts = Array.from(active.querySelectorAll('option'));
+                    if (opts.length && !opts.some(o => o.value === formSel.value)) {
+                        const saved = sessionStorage.getItem('sel-formation-' + mode);
+                        formSel.value = (saved && opts.some(o => o.value === saved)) ? saved : opts[0].value;
+                    }
+                }
+            }
+            if (modeSel && formSel) {
+                syncFormationOptions();
+                modeSel.addEventListener('change', syncFormationOptions);
+                formSel.addEventListener('change', () =>
+                    sessionStorage.setItem('sel-formation-' + modeSel.value, formSel.value));
+            }
         });
 
     </script>

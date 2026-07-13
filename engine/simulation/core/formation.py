@@ -24,6 +24,106 @@ PHASE_SHAPE = {
 }
 PHASE_REFERENCE_WIDTH = 20.0  # 11v11 pitch; smaller modes scale down
 
+# ── Formation templates ───────────────────────────────────────────────
+# Slots as (role, x_pct, y_pct) for the HOME side attacking left→right;
+# away mirrors x. Players are matched to slots by role first, so a 3-5-2
+# with only four listed midfielders still fields sensibly.
+FORMATIONS = {
+    '11v11': {
+        '4-4-2': [
+            ('GK', 0.05, 0.50),
+            ('DEF', 0.22, 0.14), ('DEF', 0.19, 0.38), ('DEF', 0.19, 0.62), ('DEF', 0.22, 0.86),
+            ('MID', 0.48, 0.12), ('MID', 0.44, 0.38), ('MID', 0.44, 0.62), ('MID', 0.48, 0.88),
+            ('FWD', 0.76, 0.40), ('FWD', 0.76, 0.60),
+        ],
+        '4-3-3': [
+            ('GK', 0.05, 0.50),
+            ('DEF', 0.22, 0.14), ('DEF', 0.19, 0.38), ('DEF', 0.19, 0.62), ('DEF', 0.22, 0.86),
+            ('MID', 0.42, 0.50), ('MID', 0.50, 0.28), ('MID', 0.50, 0.72),
+            ('FWD', 0.72, 0.15), ('FWD', 0.80, 0.50), ('FWD', 0.72, 0.85),
+        ],
+        '4-2-3-1': [
+            ('GK', 0.05, 0.50),
+            ('DEF', 0.22, 0.14), ('DEF', 0.19, 0.38), ('DEF', 0.19, 0.62), ('DEF', 0.22, 0.86),
+            ('MID', 0.40, 0.35), ('MID', 0.40, 0.65),
+            ('MID', 0.58, 0.18), ('MID', 0.60, 0.50), ('MID', 0.58, 0.82),
+            ('FWD', 0.80, 0.50),
+        ],
+        '3-5-2': [
+            ('GK', 0.05, 0.50),
+            ('DEF', 0.20, 0.25), ('DEF', 0.18, 0.50), ('DEF', 0.20, 0.75),
+            ('MID', 0.46, 0.07), ('MID', 0.44, 0.30), ('MID', 0.42, 0.50), ('MID', 0.44, 0.70), ('MID', 0.46, 0.93),
+            ('FWD', 0.76, 0.40), ('FWD', 0.76, 0.60),
+        ],
+        '5-3-2': [
+            ('GK', 0.05, 0.50),
+            ('DEF', 0.26, 0.08), ('DEF', 0.19, 0.30), ('DEF', 0.17, 0.50), ('DEF', 0.19, 0.70), ('DEF', 0.26, 0.92),
+            ('MID', 0.46, 0.30), ('MID', 0.44, 0.50), ('MID', 0.46, 0.70),
+            ('FWD', 0.74, 0.40), ('FWD', 0.74, 0.60),
+        ],
+    },
+    '5v5': {
+        '1-2-1 Diamond': [
+            ('GK', 0.08, 0.50),
+            ('DEF', 0.28, 0.50),
+            ('MID', 0.52, 0.22), ('MID', 0.52, 0.78),
+            ('FWD', 0.78, 0.50),
+        ],
+        '2-1-1 Box': [
+            ('GK', 0.08, 0.50),
+            ('DEF', 0.26, 0.30), ('DEF', 0.26, 0.70),
+            ('MID', 0.55, 0.50),
+            ('FWD', 0.80, 0.50),
+        ],
+        '1-1-2 Y': [
+            ('GK', 0.08, 0.50),
+            ('DEF', 0.28, 0.50),
+            ('MID', 0.50, 0.50),
+            ('FWD', 0.75, 0.28), ('FWD', 0.75, 0.72),
+        ],
+        '2-2 Square': [
+            ('GK', 0.08, 0.50),
+            ('DEF', 0.26, 0.30), ('DEF', 0.26, 0.70),
+            ('FWD', 0.68, 0.30), ('FWD', 0.68, 0.70),
+        ],
+    },
+}
+DEFAULT_FORMATION = {'11v11': '4-4-2', '5v5': '1-2-1 Diamond'}
+
+
+def resolve_formation(mode, name):
+    """Valid formation for the mode, falling back to the mode default."""
+    table = FORMATIONS.get(mode, FORMATIONS['5v5'])
+    if name in table:
+        return name, table[name]
+    default = DEFAULT_FORMATION.get(mode, next(iter(table)))
+    return default, table[default]
+
+
+def assign_slots(team_players, slots):
+    """Match players to formation slots, same-role first, leftovers after.
+
+    Returns {player_id: (x_pct, y_pct)}. Out-of-position fills are legal —
+    the role/zone effectiveness costs already price them in the duels.
+    """
+    unfilled = list(range(len(slots)))
+    unplaced = list(team_players)
+    mapping = {}
+
+    for role_pass in (True, False):
+        for si in list(unfilled):
+            role, sx, sy = slots[si]
+            pick = None
+            for p in unplaced:
+                if (p.role == role) if role_pass else True:
+                    pick = p
+                    break
+            if pick is not None:
+                mapping[pick.id] = (sx, sy)
+                unplaced.remove(pick)
+                unfilled.remove(si)
+    return mapping
+
 ROLE_ANCHORS = {
     'home': {
         'GK':  (0.05, 0.5),
@@ -100,10 +200,26 @@ def get_formation_target(player, ball, side, field, tactical_style=None):
     tactical_profile = style.get('profile', 'Standard')
     team_players = style.get('team_players', [])
 
-    # Layer 1: base role anchor
-    anchor_pct = ROLE_ANCHORS[side].get(player.role, (0.5, 0.5))
-    anchor_x = anchor_pct[0] * field.width
-    anchor_y = anchor_pct[1] * field.height
+    # Layer 1: formation slot anchor (falls back to the role line when no
+    # formation is configured). Slots give every player his own station —
+    # a left-back holds the left channel instead of sharing one flat line.
+    slot_map = style.get('_slot_map')
+    if slot_map is None and style.get('formation') and team_players:
+        _, slots = resolve_formation(style.get('mode', '5v5'), style.get('formation'))
+        slot_map = assign_slots(team_players, slots)
+        style['_slot_map'] = slot_map
+
+    slot = (slot_map or {}).get(player.id)
+    if slot is not None:
+        sx, sy = slot
+        if side == 'away':
+            sx = 1.0 - sx
+        anchor_x = sx * field.width
+        anchor_y = sy * field.height
+    else:
+        anchor_pct = ROLE_ANCHORS[side].get(player.role, (0.5, 0.5))
+        anchor_x = anchor_pct[0] * field.width
+        anchor_y = anchor_pct[1] * field.height
 
     # Layer 2: manager instructions shift the anchor
     depth_shift = (depth - 3) * 1.6
@@ -123,17 +239,22 @@ def get_formation_target(player, ball, side, field, tactical_style=None):
 
     width_multiplier = (0.42 + (width / 5.0) * 0.95) * shape['width']
 
-    # Assign deterministic width lanes by role once per formation update.
-    lane_map = style.get('_lane_map')
-    if lane_map is None:
-        lane_map = {}
-        for role_name in ('GK', 'DEF', 'MID', 'FWD'):
-            role_lane_map = assign_width_spread(get_role_players(team_players, role_name), float(field.height))
-            lane_map.update(role_lane_map)
-        style['_lane_map'] = lane_map
+    if slot is not None:
+        # Formation slots already carry their own width geometry; the
+        # width slider and phase shape stretch/squeeze it around center.
+        anchor_y = (field.height * 0.5) + (anchor_y - field.height * 0.5) * width_multiplier
+    else:
+        # Legacy role lines: assign deterministic width lanes by role.
+        lane_map = style.get('_lane_map')
+        if lane_map is None:
+            lane_map = {}
+            for role_name in ('GK', 'DEF', 'MID', 'FWD'):
+                role_lane_map = assign_width_spread(get_role_players(team_players, role_name), float(field.height))
+                lane_map.update(role_lane_map)
+            style['_lane_map'] = lane_map
 
-    spread_y = lane_map.get(player.id, anchor_y)
-    anchor_y = (field.height * 0.5) + (spread_y - field.height * 0.5) * width_multiplier
+        spread_y = lane_map.get(player.id, anchor_y)
+        anchor_y = (field.height * 0.5) + (spread_y - field.height * 0.5) * width_multiplier
 
     press_expansion = (press - 3) * PRESS_LEASH_SENSITIVITY.get(player.role, 0.5)
     max_wander = BASE_LEASH.get(player.role, 2.5) + press_expansion

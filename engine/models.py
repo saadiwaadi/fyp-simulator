@@ -35,6 +35,17 @@ class Player(models.Model):
     short_passing = models.IntegerField(default=50)
     interceptions = models.IntegerField(default=50)
 
+    # Specialist stats (league-level data): close control, aerial game,
+    # man-marking, and a real goalkeeping triple so saves stop riding on
+    # composure alone. Zero means "not set" -- the engine derives a
+    # fallback from the legacy stats so old squads keep working.
+    dribbling = models.IntegerField(default=0)
+    heading = models.IntegerField(default=0)
+    marking = models.IntegerField(default=0)
+    gk_reflexes = models.IntegerField(default=0)
+    gk_handling = models.IntegerField(default=0)
+    gk_aerials = models.IntegerField(default=0)
+
     # --- TACTICAL MEMORY (The Missing Fields) ---
     is_starting = models.BooleanField(default=False)
     
